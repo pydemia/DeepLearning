@@ -185,10 +185,13 @@ def neural_network(input1, input2):
 ```python
 def neural_network_two_hidden_layers(input1, input2):
 
+    #--------------------------- INPUT LAYER ---------------------------------#
     # Two inputs and One bias
     inputs = np.array([input1, input2])
     bias1 = np.array([.4, .1, .2])
 
+
+    #------------------------ 1st HIDDEN LAYER -------------------------------#
     # Weights directed to the 1st three hidden layers
     weight1 = np.array([[.1, .3, .5], [.2, .4, .6]])
 
@@ -197,6 +200,8 @@ def neural_network_two_hidden_layers(input1, input2):
     activation_function1 = lambda x: 1 / (1 + np.exp(-x)) # sigmoid function
     hidden_layer1_output = activation_function1(hidden_layer1_input)
 
+
+    #------------------------ 2nd HIDDEN LAYER -------------------------------#
     # Three inputs and One bias
     hidden_layer1_output
     bias2 = np.array([.3, .1])
@@ -209,6 +214,8 @@ def neural_network_two_hidden_layers(input1, input2):
     activation_function2 = lambda x: 1 / (1 + np.exp(-x)) # sigmoid function
     hidden_layer2_output = activation_function2(hidden_layer2_input)
 
+
+    #-------------------------- OUTPUT LAYER ---------------------------------#
     # Two inputs and One bias
     hidden_layer2_output
     bias3 = np.array([.3, .1])
@@ -222,7 +229,10 @@ def neural_network_two_hidden_layers(input1, input2):
     #activation_function3 = lambda x: np.exp(x) / np.exp(x).sum(axis=0) # softmax function for classification
     output_layer_output = activation_function3(output_layer_input)
 
+
+    #----------------------------- OUTPUT ------------------------------------#
     return output_layer_output
+
 ```
 ```python
 neural_network_two_hidden_layers(.2, .3)
