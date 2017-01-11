@@ -152,7 +152,7 @@ Recently, ```ReLU(Rectified Linear Unit) function``` is an alternative since the
 ```ReLU``` is a combination of ```step function``` and ```linear function```. It returns **_0_** if the input is below **_0_**, or return the input itself.
 
 
-### Inner Product and NN
+### Inner Product and Neural Network
 
 Look at it first:
 ```python
@@ -179,9 +179,7 @@ def neural_network(input1, input2):
 ```
 ### Hidden Layer
 
-
-
-### Define a ```neural network``` with 2 hidden layers
+#### Define a ```neural network``` with 2 hidden layers
 ```python
 def neural_network_two_hidden_layers(input1, input2):
 
