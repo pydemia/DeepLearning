@@ -35,7 +35,7 @@ def ANDgate(*args):
 > Bias  : A control parameter How easily the result can be activated.
 
 
-#### AND, NAND, OR gate Test
+### AND, NAND, OR gate Test
 
 Definition:
 ```python
@@ -93,7 +93,7 @@ Out []:
  1 0 1
 ```
 
-#### XOR gate with ```multi-layer perceptron```: ```non-linear```
+## XOR gate with ```multi-layer perceptron```: ```non-linear```
 
 Enter inputs to both of NAND and OR, and then each outputs are inputs of AND:
 
