@@ -306,3 +306,9 @@ neural_network_two_hidden_layers(.2, .3)
 Out[]: array([ 0.50517432,  0.80259117])
 ```
 
+### Output Layer
+
+In general, the number of neurons on output layers are setted to the same number of the class to classify.
+
+## Test with the MNIST Dataset
+
