@@ -91,7 +91,7 @@ ttbl = np.array([[0,0],
 for _ in ttbl:
     print(_, ':\n', ANDgate(_), NANDgate(_), ORgate(_))
 
-Out []:
+# Out []:
 [0 0] :
  0 1 0
 [0 1] :
@@ -119,7 +119,7 @@ def XORgate(*args):
 for _ in ttbl:
     print(_, ':\n', XORgate(_))
 
-Out []:
+# Out []:
 [0 0] :
  0
 [0 1] :
@@ -222,15 +222,15 @@ For your information, ```softmax``` is normally used when training a model and s
 Look at it first:
 ```python
 Inputs = np.array([1, 2])
-Out[]: array([1, 2])
+# Out []: array([1, 2])
 
 Weight = np.array([[1, 3, 5], [2, 4, 6]])
-Out[]: 
+# Out []:
 array([[1, 3, 5],
        [2, 4, 6]])
 
 Netwrk = np.dot(inputs, weight)
-Out[]: array([ 5, 11, 17])
+# Out []: array([ 5, 11, 17])
 ```
 
 In this case, the inputs are delivered each(3) ```hidden layer```s with the weights. It can be calcultated by ```inner product```.
@@ -303,7 +303,7 @@ Run it:
 ```python
 neural_network_two_hidden_layers(.2, .3)
 
-Out[]: array([ 0.50517432,  0.80259117])
+# Out []: array([ 0.50517432,  0.80259117])
 ```
 
 ### Output Layer
@@ -404,8 +404,7 @@ for _ in range(len(x)):
     accuracyCount += 1 if p == t[_] else 0
 
 print('Accuracy :' + str(float(accuracyCount) / len(x)))
-Out []:
-Accuracy :0.9207
+# Out []: Accuracy :0.9207
 ```
 
 
@@ -425,6 +424,5 @@ for _ in range(0, len(x), batchSize):
     accuracyCount += np.sum(p == t[_:(_ + batchSize)])
 
 print('Accuracy :' + str(float(accuracyCount) / len(x)))
-Out []:
-Accuracy :0.9135
+# Out []: Accuracy :0.9135
 ```
