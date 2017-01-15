@@ -404,7 +404,7 @@ for _ in range(len(x)):
     accuracyCount += 1 if p == t[_] else 0
 
 print('Accuracy :' + str(float(accuracyCount) / len(x)))
-----------------------------------------------------------
+Out []:
 Accuracy :0.9207
 ```
 
@@ -425,6 +425,6 @@ for _ in range(0, len(x), batchSize):
     accuracyCount += np.sum(p == t[_:(_ + batchSize)])
 
 print('Accuracy :' + str(float(accuracyCount) / len(x)))
-----------------------------------------------------------
+Out []:
 Accuracy :0.9135
 ```
