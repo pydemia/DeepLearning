@@ -310,5 +310,121 @@ Out[]: array([ 0.50517432,  0.80259117])
 
 In general, the number of neurons on output layers are setted to the same number of the class to classify.
 
-## Test with the MNIST Dataset
+## Test with the MNIST Dataset(Only the inference step)
 
+Definition
+```python
+### Load a Dataset
+import sys
+import numpy as np
+import pickle
+from PIL import Image
+
+sys.path.append('/media/dawkiny/M/Git/DeepLearning/books/DeepLearningFromScratch')
+from dataset.mnist import load_mnist
+
+# Load Images: Flatten=True then it is loaded with 1D numpy
+(x_train, t_train), (x_test, t_test) = load_mnist(flatten=True, normalize=False)
+
+x_train.shape
+x_test.shape
+
+def showImage(image):
+    pilImg = Image.fromarray(np.uint8(image))
+    pilImg.show()
+
+
+img = x_train[0]
+label = t_train[0]
+
+print(label)
+print(img.shape)
+
+# Change 1D numpy to an image
+img = img.reshape(28, 28)
+print(img.shape)
+
+#%%
+### Inference 
+# Input neuron: 28x28=784
+# Hidden layer: 2(1st=50, 2nd=100 heuristic)
+# Output neuron: 0~9=10ea
+
+def getData():
+    # Load Images: Flatten=True then it is loaded with 1D numpy
+    (x_train, t_train), (x_test, t_test) = load_mnist(flatten=True,
+                                                      normalize=False,
+                                                      one_hot_label=False)
+    return x_test, t_test
+
+
+def initNetwork():
+    
+    # Load the pre-learned weight parameters
+    with open('sample_weight.pkl', 'rb') as f:
+        network = pickle.load(f)
+    
+    return network
+
+
+def predict(network, inputs):
+    
+    # Load the parameters
+    WEIGHT1, WEIGHT2, WEIGHT3 = network['W1'], network['W2'], network['W3']
+    bias1, bias2, bias3 = network['b1'], network['b2'], network['b3']
+    
+    #------------------------ 1st HIDDEN LAYER -------------------------------#
+    hidden_layer1_input  = np.dot(inputs, WEIGHT1) + bias1
+    activation_function1 = lambda x: 1 / (1 + np.exp(-x)) # sigmoid function
+    hidden_layer1_output = activation_function1(hidden_layer1_input)
+    
+    #------------------------ 2nd HIDDEN LAYER -------------------------------#
+    hidden_layer2_input  = np.dot(hidden_layer1_output, WEIGHT2) + bias2
+    activation_function2 = lambda x: 1 / (1 + np.exp(-x)) # sigmoid function
+    hidden_layer2_output = activation_function2(hidden_layer2_input)
+    
+    #-------------------------- OUTPUT LAYER ---------------------------------#
+    output_layer_input  = np.dot(hidden_layer2_output, WEIGHT3) + bias3
+    activation_function3 = lambda x: np.exp(x) / np.exp(x).sum(axis=0) # softmax function for classification
+    output_layer_output = activation_function3(output_layer_input)
+    
+    return output_layer_output
+
+```
+
+Test it(one by one)
+```python
+x, t = getData()
+network = initNetwork()
+
+accuracyCount = 0
+for _ in range(len(x)):
+    y = predict(network, x[_])
+    p = np.argmax(y)
+    accuracyCount += 1 if p == t[_] else 0
+
+print('Accuracy :' + str(float(accuracyCount) / len(x)))
+----------------------------------------------------------
+Accuracy :0.9207
+```
+
+
+Batch Test(x100 a time)
+```python
+
+x, t = getData()
+network = initNetwork()
+
+batchSize = 100
+accuracyCount = 0
+
+for _ in range(0, len(x), batchSize):
+    batchX = x[_:(_ + batchSize)]
+    batchY = predict(network, batchX)
+    p = np.argmax(batchY, axis=1)
+    accuracyCount += np.sum(p == t[_:(_ + batchSize)])
+
+print('Accuracy :' + str(float(accuracyCount) / len(x)))
+----------------------------------------------------------
+Accuracy :0.9135
+```
