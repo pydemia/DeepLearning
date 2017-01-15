@@ -104,11 +104,11 @@ the above has 2 problems.
 At first, if ```h``` is too small, it cannot be calculated by computer properly:
 ```python
 np.float64(1e-50)
-----------------------
+# Out []:
 1e-50
 
 np.float32(1e-50)
-----------------------
+# Out []:
 0.0
 ```
 
@@ -149,11 +149,11 @@ plt.show()
 Differentiate it:
 ```python
 numericalDifferentiation(functionA, 5)
-----------------------------------------
+# Out []:
 0.19999999998909776
 
 numericalDifferentiation(functionA, 10)
-----------------------------------------
+# Out []:
 0.29999999997532
 ```
 
@@ -203,11 +203,11 @@ def partialFunctionX1(X1):
     return 3.**2 + X1**2
 
 numericalDifferentiation(partialFunctionX0, 3.)
------------------------------------------------
+# Out []:
 6.000000000128124
 
 numericalDifferentiation(partialFunctionX1, 4.)
------------------------------------------------
+# Out []:
 7.999999999874773
 ```
 
@@ -239,15 +239,15 @@ def numericalGradient(function, X):
 Get Gradients:
 ```python
 numericalGradient(partialFunctionA, np.array([3., 4.]))
---------------------------------------------------------
+# Out []:
 array([ 6.,  8.])
 
 numericalGradient(partialFunctionA, np.array([0., 2.]))
---------------------------------------------------------
+# Out []:
 array([ 0.,  4.])
 
 numericalGradient(partialFunctionA, np.array([3., 0.]))
---------------------------------------------------------
+# Out []:
 array([ 6.,  0.])
 
 ```
