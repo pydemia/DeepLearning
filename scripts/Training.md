@@ -88,3 +88,169 @@ img = img.reshape(28, 28)
 print(img.shape)
 
 ```
+
+## Gradients
+
+### Numerical Differentiation
+
+```python
+def numericalDifferentiation(function, x):
+    h = 1e-50
+    return (function(x + h) - function(x)) / h
+```
+
+the above has 2 problems.
+
+At first, if ```h``` is too small, it cannot be calculated by computer properly:
+```python
+np.float64(1e-50)
+----------------------
+1e-50
+
+np.float32(1e-50)
+----------------------
+0.0
+```
+
+so it is recommended to use ```1e-5```
+
+
+Secondary, its ```difference``` implies an error because the ```h``` is cannot be **_0_**.  
+Instead, we can use ```central difference```: ```function(x+h) - function(x-h)```, not ```function(x+h) - function(x)```  
+
+```python
+def numericalDifferentiation(function, x):
+    h = 1e-5
+    return (function(x + h) - function(x - h)) / (2 * h)
+```
+
+### Example: Numerical Differentiation
+
+Define a function:
+```python
+def functionA(x):
+    return (.01 * x **2) + (.1 * x)
+```
+
+Plot it:
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+
+X = np.arange(.0, 20., .1)
+y = functionA(x)
+
+plt.xlabel('x')
+plt.ylabel('f(x)')
+plt.plot(X, y)
+plt.show()
+```
+
+Differentiate it:
+```python
+numericalDifferentiation(functionA, 5)
+----------------------------------------
+0.19999999998909776
+
+numericalDifferentiation(functionA, 10)
+----------------------------------------
+0.29999999997532
+```
+
+Plot it:
+```python
+def tangentLine(function, x):
+    d = numericalDifferentiation(function, x)
+    print(d)
+    y = function(x) - d*x
+    return lambda t: d*t + y
+
+tf = tangentLine(functionA, 5)
+y2 = tf(x)
+
+# Plot lines
+plt.plot(X, y)
+plt.plot(X, y2)
+
+# the solution
+solY = y[np.where(y2 == y)] # y = .75
+solX = X[np.where(y2 == y)] # X = 5.
+plt.plot(solX,solY, lw=2, c='k', marker='o')
+
+plt.show()
+```
+
+
+### Partial Differentiation
+
+Define a Partial Function:
+>f(X0, X1) = X0\*\*2 + X1\*\*2
+
+```python
+def patialFunctionA(X):
+    assert len(X) == 2
+    return X[0]**2 + X[1]**2
+```
+
+If ```x0 = 3.```, ```x1 = 4.```,
+
+Get the partial difference of ```X0```:
+```python
+def partialFunctionX0(X0):
+    return X0**2 + 4.**2
+
+def partialFunctionX1(X1):
+    return 3.**2 + X1**2
+
+numericalDifferentiation(partialFunctionX0, 3.)
+-----------------------------------------------
+6.000000000128124
+
+numericalDifferentiation(partialFunctionX1, 4.)
+-----------------------------------------------
+7.999999999874773
+```
+
+### Gradients
+
+Define a Gradient Function:
+```python
+def numericalGradient(function, X): 
+
+    h = 1e-5
+    grad = np.zeros_like(X)
+    
+    for _ in range(X.size):
+        tmp_val = X[_]
+        
+        # function(x + h)
+        X[_] = tmp_val + h
+        fxh1 = function(X)
+        
+        # function(x - h)
+        X[_] = tmp_val - h 
+        fxh2 = function(X) # f(x-h)
+        
+        grad[_] = (fxh1 - fxh2) / (2*h)
+    
+    return grad
+```
+
+Get Gradients:
+```python
+numericalGradient(partialFunctionA, np.array([3., 4.]))
+--------------------------------------------------------
+array([ 6.,  8.])
+
+numericalGradient(partialFunctionA, np.array([0., 2.]))
+--------------------------------------------------------
+array([ 0.,  4.])
+
+numericalGradient(partialFunctionA, np.array([3., 0.]))
+--------------------------------------------------------
+array([ 6.,  0.])
+
+```
+
+
+
