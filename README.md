@@ -15,6 +15,6 @@ Pure Deep Learning Algorithm in Python.
 * [Training](https://github.com/pydemia/DeepLearning/blob/master/scripts/Training.md)
   - [Loss Function](https://github.com/pydemia/DeepLearning/blob/master/scripts/Training.md#loss-function)
   - [Mini-Batch](https://github.com/pydemia/DeepLearning/blob/master/scripts/Training.md#mini-batch-training)
-  - [Gradients](https://github.com/pydemia/DeepLearning/blob/master/scripts/Training.md#gradients)
+  - [Gradients](https://github.com/pydemia/DeepLearning/blob/master/scripts/Training.md#gradients)  
   - [Implement](https://github.com/pydemia/DeepLearning/blob/master/scripts/Basics.md##test-with-the-mnist-datasetonly-the-inference-step)
 
