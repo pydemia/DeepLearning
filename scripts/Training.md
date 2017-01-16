@@ -1,7 +1,7 @@
 # Training a Neural Network
 
 In machine learning, We need to train a system with Training Datasets to minimize the loss.
-It means the system get the values from ```Loss Function``` for each train-dataset and find out the parameter(weights & biases) make the summation of the values minimize.
+It means the system get the values from ```Loss Function``` for each train-dataset and find out the parameters(weights & biases) make the summation of the values minimize.
 
 * mini-batch  
 * get gradients  
@@ -187,7 +187,7 @@ Define a Partial Function:
 >f(X0, X1) = X0\*\*2 + X1\*\*2
 
 ```python
-def patialFunctionA(X):
+def partialFunctionA(X):
     assert len(X) == 2
     return X[0]**2 + X[1]**2
 ```
@@ -252,5 +252,91 @@ array([ 6.,  0.])
 
 ```
 
+
+#### Gradient Descent
+The optimal parameter means the parameter value that make ```Loss Function``` minimize. We usually apply ```Gradient Descent``` on finding the optimals and it premises that the gradient points to the optimal.  
+
+Gradient Descent Function:
+```python
+
+def gradientDescent(function, initX, learningRate=.01, repeatStep=100):
+    x = initX
+    for _ in range(repeatStep):
+        x -= learningRate * numericalGradient(function, x)
+    return x
+
+```
+
+Use it:
+```python
+def gradientDescent(function, initX, learningRate=.01, repeatStep=100):
+    x = initX
+    for _ in range(repeatStep):
+        x -= learningRate * numericalGradient(function, x)
+    return x
+
+
+def partialFunctionA(X):
+    assert len(X) == 2
+    return X[0]**2 + X[1]**2
+
+def numericalGradient(function, X): 
+    
+    h = 1e-5
+    grad = np.zeros_like(X)
+    
+    for _ in range(X.size):
+        tmp_val = X[_]
+        
+        # function(x + h)
+        X[_] = tmp_val + h
+        fxh1 = function(X)
+        
+        # function(x - h)
+        X[_] = tmp_val - h 
+        fxh2 = function(X) # f(x-h)
+        
+        grad[_] = (fxh1 - fxh2) / (2*h)
+    
+    return grad
+
+
+X = np.array([3., 4.])
+gradientDescent(partialFunctionA, initX=X, learningRate=.01, repeatStep=100)
+# Out []:
+array([ 0.39742498,  0.53004453])
+```
+
+If ```learningRate``` is too big:
+```python
+X = np.array([3., 4.])
+gradientDescent(partialFunctionA, X, learningRate=10., repeatStep=100)
+# Out []:
+array([ -4.73722866e+11,  -2.55129180e+12]) # -473722866000, -2551291800000
+```
+
+If ```learningRate``` is too small:
+```python
+X = np.array([3., 4.])
+gradientDescent(partialFunctionA, X, learningRate=10., repeatStep=100)
+# Out []:
+array([ 2.99300693,  3.9910089 ])
+```
+
+
+```learningRate``` is called ```hyper parameter```, which means a parameter not be gained by an algorithm, but should be set by a man in manual.
+
+#### Gradient in Neural Network
+This gradient is the one of a ```Loss Function``` about the weights.  
+When a 2x3 neural network with its weight __W__, its loss function *__L__*, the gradient is the ```partial difference``` of __W__.
+
+```python
+W = np.array([w11, w12, w13],
+             [w21, w22, w23])
+```
+```python
+pdW = np.array([pdw11, pdw12, pdw13],
+               [pdw21, pdw22, pdw23])
+```
 
 
