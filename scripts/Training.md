@@ -339,4 +339,96 @@ pdW = np.array([pdw11, pdw12, pdw13],
                [pdw21, pdw22, pdw23])
 ```
 
+#### Practice to get Gradients
 
+Define a class for use:
+```python
+import numpy as np
+
+class funcMod:
+    def sigmoid(X):
+        return 1 / (1 + np.exp(-X))
+
+
+    def softmax(X):
+        return np.exp(X) / np.exp(X).sum(axis=0)
+ 
+
+    def crossEntropyError(yTrue, yPred):
+        delta = 1e-7
+        return -np.sum(yPred * np.log(yTrue + delta))
+
+
+    def numericalGradient(function, X): 
+    
+        h = 1e-5
+        grad = np.zeros_like(X)
+
+        it = np.nditer(X, flags=['multi_index'], op_flags=['readwrite'])
+        while not it.finished:
+            idx = it.multi_index
+            tmp_val = X[idx]
+            X[idx] = float(tmp_val) + h
+            fxh1 = f(X)
+
+            X[idx] = tmp_val - h 
+            fxh2 = f(X)
+            grad[idx] = (fxh1 - fxh2) / (2*h)
+
+            X[idx] = tmp_val
+            it.iternext()   
+
+        return grad
+```
+
+Define a Neural Network:
+```python
+class simpleNet:
+    def __init__(self):
+        self.W = np.random.randn(2,3)
+        
+    def predict(self, X):
+        return np.dot(X, self.W)
+    
+    def loss(self, X, t):
+        z = self.predict(X)
+        y = funcMod.softmax(z)
+        loss = funcMod.crossEntropyError(y, t)
+        
+        return loss
+```
+
+Test it:
+```python
+net = simpleNet()
+net.W
+Out[]: 
+array([[-2.08127481, -0.47733376,  0.11947171],
+       [ 0.44312669, -1.02350389,  0.29610165]])
+
+X = np.array([.6, .9])
+p = net.predict(X)
+Out[]: 
+array([-0.84995087, -1.20755376,  0.33817451])
+
+
+t = np.array([0, 0, 1])
+net.loss(x, t)
+Out[]:
+0.41735971668735855
+
+
+def dummyFunc(W):
+    return net.loss(X, t)
+
+dW = funcMod.numericalGradient(dummyFunc, net.W)
+dW
+Out[]: 
+array([[ 0.28330426,  0.19981389, -0.48311814],
+       [ 0.42495638,  0.29972083, -0.72467721]])
+```
+
+Each ```dW``` is the gradient of __W__;a weight.  
+
+
+### Implement
