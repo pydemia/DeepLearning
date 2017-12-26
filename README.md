@@ -17,3 +17,22 @@ Pure Deep Learning Algorithm in Python.
   - [Mini-Batch](https://github.com/pydemia/DeepLearning/blob/master/scripts/Training.md#mini-batch-training)
   - [Gradients](https://github.com/pydemia/DeepLearning/blob/master/scripts/Training.md#gradients)
   - [Implement]()
+
+
+## Networks
+
+### Convolutional Neural Networks
+
+### Recurrent Neural Networks
+
+#### LSTM
+
+#### GRU 
+
+### Generative Adversarial Networks
+
+### Capsule Networks
+
+
+## Model Definition
+
