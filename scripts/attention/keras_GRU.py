@@ -1063,3 +1063,91 @@ class GRU(RNN):
         if 'implementation' in config and config['implementation'] == 0:
             config['implementation'] = 1
         return cls(**config)
+
+
+class Wrapper(Layer):
+    """Abstract wrapper base class.
+
+    Wrappers take another layer and augment it in various ways.
+    Do not use this class as a layer, it is only an abstract base class.
+    Two usable wrappers are the `TimeDistributed` and `Bidirectional` wrappers.
+
+    # Arguments
+        layer: The layer to be wrapped.
+    """
+
+    def __init__(self, layer, **kwargs):
+        self.layer = layer
+        # Tracks mapping of Wrapper inputs to inner layer inputs. Useful when
+        # the inner layer has update ops that depend on its inputs (as opposed
+        # to the inputs to the Wrapper layer).
+        self._input_map = {}
+        super(Wrapper, self).__init__(**kwargs)
+
+    def build(self, input_shape=None):
+        self.built = True
+
+    @property
+    def activity_regularizer(self):
+        if hasattr(self.layer, 'activity_regularizer'):
+            return self.layer.activity_regularizer
+        else:
+            return None
+
+    @property
+    def trainable_weights(self):
+        return self.layer.trainable_weights
+
+    @property
+    def non_trainable_weights(self):
+        return self.layer.non_trainable_weights
+
+    @property
+    def updates(self):
+        if hasattr(self.layer, 'updates'):
+            return self.layer.updates
+        return []
+
+    def get_updates_for(self, inputs=None):
+        # If the wrapper modifies the inputs, use the modified inputs to
+        # get the updates from the inner layer.
+        inner_inputs = inputs
+        if inputs is not None:
+            uid = _object_list_uid(inputs)
+            if uid in self._input_map:
+                inner_inputs = self._input_map[uid]
+
+        updates = self.layer.get_updates_for(inner_inputs)
+        updates += super(Wrapper, self).get_updates_for(inputs)
+        return updates
+
+    @property
+    def losses(self):
+        if hasattr(self.layer, 'losses'):
+            return self.layer.losses
+        return []
+
+    def get_losses_for(self, inputs=None):
+        if inputs is None:
+            losses = self.layer.get_losses_for(None)
+            return losses + super(Wrapper, self).get_losses_for(None)
+        return super(Wrapper, self).get_losses_for(inputs)
+
+    def get_weights(self):
+        return self.layer.get_weights()
+
+    def set_weights(self, weights):
+        self.layer.set_weights(weights)
+
+    def get_config(self):
+        config = {'layer': {'class_name': self.layer.__class__.__name__,
+                            'config': self.layer.get_config()}}
+        base_config = super(Wrapper, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+    @classmethod
+    def from_config(cls, config, custom_objects=None):
+        from . import deserialize as deserialize_layer
+        layer = deserialize_layer(config.pop('layer'),
+                                  custom_objects=custom_objects)
+        return cls(layer, **config)
