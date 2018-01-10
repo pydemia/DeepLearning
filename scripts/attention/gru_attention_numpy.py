@@ -28,6 +28,11 @@ def MyGRUAttention():
     w1 = np.array([[.8]]).reshape(units, units)
     w2 = np.array([[.5]]).reshape(ndim, units)
 
+    uu = np.array([[.6, .4, .1]]).reshape(ndim, units*3)
+    uu0 = uu[:,        : units*1]
+    uu1 = uu[:, units*1: units*2]
+    uu2 = uu[:, units*2]
+
     # %%
 
     v = np.array([[.1, .9, .5]]).reshape(ndim, units*3)
@@ -40,16 +45,15 @@ def MyGRUAttention():
     u1 = u[:, units*1: units*2]
     u2 = u[:, units*2]
 
-    uu = np.array([[.6, .4, .1]]).reshape(ndim, units*3)
-    uu0 = uu[:,        : units*1]
-    uu1 = uu[:, units*1: units*2]
-    uu2 = uu[:, units*2]
-
     # %%
     outputs = []
     for seq in range(len(h)):
 
         # Attention Part
+
+        seq_len, ndim
+        s0, h
+        w1, w2
 
         # x.shape : (a, b),
         # K.repeat(x, 3).shape : (a, 3, b)

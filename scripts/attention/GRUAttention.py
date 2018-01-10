@@ -188,9 +188,44 @@ class GRUAttentionCell(GRUCell):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        #self.state_size = self.units :for RNN, GRU
+        #self.state_size = (self.units, self.units) : for LSTM
+        self.attn_length = 79
+        self.attn_size = 79
+        self.attn_vec_size = self.attn_size
+        self.input_size = None
+        self.state_size = (self.units, self.units)
+
+    """
+    @property
+    def state_size(self):
+    size = (self._cell.state_size, self._attn_size,
+            self._attn_size * self._attn_length)
+    if self._state_is_tuple:
+      return size
+    else:
+      return sum(list(size))
+    """
+
+
+    def get_initial_state(self, inputs):
+        # build an all-zero tensor of shape (samples, output_dim)
+        initial_state = K.zeros_like(inputs)  # (samples, timesteps, input_dim)
+        initial_state = K.sum(initial_state, axis=(1, 2))  # (samples,)
+        initial_state = K.expand_dims(initial_state)  # (samples, 1)
+        if hasattr(self.cell.state_size, '__len__'):
+            state = [K.tile(initial_state, [1, dim])
+                     for dim in self.cell.state_size[:-1]]
+        else:
+            state = [K.tile(initial_state, [1, self.cell.state_size])]
+
+        full_inputs = [inputs]
+        return state + full_inputs
+
 
     def build(self, input_shape):
         #self.timesteps = input_shape[0]
+        print('build cell:', input_shape)
         input_dim = input_shape[-1]
         self.kernel = self.add_weight(shape=(input_dim, self.units * 4),
                                       name='kernel',
@@ -244,6 +279,7 @@ class GRUAttentionCell(GRUCell):
             self.bias_z = None
             self.bias_r = None
             self.bias_h = None
+            self.bias_c = None
         self.built = True
 
         """
@@ -265,9 +301,11 @@ class GRUAttentionCell(GRUCell):
         """
 
     def call(self, inputs, states, training=None):
-        input_shape = K.int_shape(inputs)
-        timesteps = input_shape[1]
+        print('cell.call Input Shape:', K.int_shape(inputs), 'State Shape:', K.int_shape(states[0]))
         h_tm1 = states[0]  # previous memory
+        full_inputs = states[-1]
+        timesteps = K.int_shape(full_inputs)[1]
+
 
         if 0 < self.dropout < 1 and self._dropout_mask is None:
             self._dropout_mask = _generate_dropout_mask(
@@ -324,9 +362,11 @@ class GRUAttentionCell(GRUCell):
             #context = K.squeeze(K.batch_dot(at, self.x_seq, axes=1), axis=1)
 
             # Attention Context Part
-            h_tm1_c = K.repeat(h_tm1_c, timesteps)
+            #h_tm1_c = K.repeat(h_tm1_c, timesteps)
+            h_tm1_c = full_inputs
             e = self.activation(x_c + K.dot(h_tm1_c, self.recurrent_kernel_c))
             a = K.softmax(e)
+            print('A:', K.int_shape(a), 'inputs_c:', K.int_shape(inputs_c), 'full input:', K.int_shape(full_inputs))
             c_t = K.dot(a, inputs_c)
 
             # GRU Part
@@ -369,6 +409,8 @@ class GRUAttentionCell(GRUCell):
                                 self.recurrent_kernel[:, 2 * self.units:])
             hh = self.activation(x_h + recurrent_h)
             """
+            pass
+
         h = z * h_tm1 + (1 - z) * hh
         if 0 < self.dropout + self.recurrent_dropout:
             if training is None:
@@ -377,7 +419,12 @@ class GRUAttentionCell(GRUCell):
 
 
 
-class GRUAttention(GRU):
+
+class GRUAttention(RNN):
+
+    """Gated Recurrent Unit - Cho et al. 2014.
+    A
+    """
 
     @interfaces.legacy_recurrent_support
     def __init__(self, units,
@@ -432,22 +479,22 @@ class GRUAttention(GRU):
                                 dropout=dropout,
                                 recurrent_dropout=recurrent_dropout,
                                 implementation=implementation)
-        super(GRU, self).__init__(cell,
-                                  return_sequences=return_sequences,
-                                  return_state=return_state,
-                                  go_backwards=go_backwards,
-                                  stateful=stateful,
-                                  unroll=unroll,
-                                  **kwargs)
+        super(GRUAttention, self).__init__(cell,
+                                           return_sequences=return_sequences,
+                                           return_state=return_state,
+                                           go_backwards=go_backwards,
+                                           stateful=stateful,
+                                           unroll=unroll,
+                                           **kwargs)
         self.activity_regularizer = regularizers.get(activity_regularizer)
 
-        #self.cell = cell
-        #self.state_size = self.units
-        #self._states = states
+    def call(self, inputs, mask=None, training=None, initial_state=None):
+        return super(GRUAttention, self).call(inputs,
+                                              mask=mask,
+                                              training=training,
+                                              initial_state=initial_state)
 
-#    def get_initial_state(self, inputs):
-#        pass
-        """
+    def get_initial_state(self, inputs):
         # build an all-zero tensor of shape (samples, output_dim)
         initial_state = K.zeros_like(inputs)  # (samples, timesteps, input_dim)
         initial_state = K.sum(initial_state, axis=(1, 2))  # (samples,)
@@ -457,10 +504,99 @@ class GRUAttention(GRU):
                     for dim in self.cell.state_size]
         else:
             return [K.tile(initial_state, [1, self.cell.state_size])]
-        """
 
-    def call(self, inputs, mask=None, training=None, initial_state=None):
-        return super(GRU, self).call(inputs,
-                                     mask=mask,
-                                     training=training,
-                                     initial_state=initial_state)
+    @property
+    def units(self):
+        return self.cell.units
+
+    @property
+    def activation(self):
+        return self.cell.activation
+
+    @property
+    def recurrent_activation(self):
+        return self.cell.recurrent_activation
+
+    @property
+    def use_bias(self):
+        return self.cell.use_bias
+
+    @property
+    def kernel_initializer(self):
+        return self.cell.kernel_initializer
+
+    @property
+    def recurrent_initializer(self):
+        return self.cell.recurrent_initializer
+
+    @property
+    def bias_initializer(self):
+        return self.cell.bias_initializer
+
+    @property
+    def kernel_regularizer(self):
+        return self.cell.kernel_regularizer
+
+    @property
+    def recurrent_regularizer(self):
+        return self.cell.recurrent_regularizer
+
+    @property
+    def bias_regularizer(self):
+        return self.cell.bias_regularizer
+
+    @property
+    def kernel_constraint(self):
+        return self.cell.kernel_constraint
+
+    @property
+    def recurrent_constraint(self):
+        return self.cell.recurrent_constraint
+
+    @property
+    def bias_constraint(self):
+        return self.cell.bias_constraint
+
+    @property
+    def dropout(self):
+        return self.cell.dropout
+
+    @property
+    def recurrent_dropout(self):
+        return self.cell.recurrent_dropout
+
+    @property
+    def implementation(self):
+        return self.cell.implementation
+
+    def get_config(self):
+        config = {'units': self.units,
+                  'activation': activations.serialize(self.activation),
+                  'recurrent_activation': activations.serialize(self.recurrent_activation),
+                  'use_bias': self.use_bias,
+                  'kernel_initializer': initializers.serialize(self.kernel_initializer),
+                  'recurrent_initializer': initializers.serialize(self.recurrent_initializer),
+                  'bias_initializer': initializers.serialize(self.bias_initializer),
+                  'kernel_regularizer': regularizers.serialize(self.kernel_regularizer),
+                  'recurrent_regularizer': regularizers.serialize(self.recurrent_regularizer),
+                  'bias_regularizer': regularizers.serialize(self.bias_regularizer),
+                  'activity_regularizer': regularizers.serialize(self.activity_regularizer),
+                  'kernel_constraint': constraints.serialize(self.kernel_constraint),
+                  'recurrent_constraint': constraints.serialize(self.recurrent_constraint),
+                  'bias_constraint': constraints.serialize(self.bias_constraint),
+                  'dropout': self.dropout,
+                  'recurrent_dropout': self.recurrent_dropout,
+                  'implementation': self.implementation}
+        base_config = super(GRUAttention, self).get_config()
+        del base_config['cell']
+        return dict(list(base_config.items()) + list(config.items()))
+
+    @classmethod
+    def from_config(cls, config):
+        if 'implementation' in config and config['implementation'] == 0:
+            config['implementation'] = 1
+        return cls(**config)
+
+
+class aa:
+    pass
