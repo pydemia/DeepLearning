@@ -1,290 +1,609 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-import numpy as np
-import warnings
 
-from keras import backend as K
 from keras import activations
+from keras import backend as K
+from keras.engine import InputSpec
+from keras.engine import Layer
+from keras.layers import concatenate
+from keras.layers import has_arg
 from keras import initializers
 from keras import regularizers
 from keras import constraints
-from keras.engine import Layer
-from keras.engine import InputSpec
-from ..engine.topology import _object_list_uid
-from keras.utils.generic_utils import has_arg
-
-# Legacy support.
-from keras.legacy.layers import Recurrent
-from keras.legacy import interfaces
-
-from keras.layers import (RNN, GRUCell, GRU,
-                          _generate_dropout_ones,
-                          _generate_dropout_mask)
 
 
-def _generate_dropout_ones(inputs, dims):
-    # Currently, CTNK can't instantiate `ones` with symbolic shapes.
-    # Will update workaround once CTNK supports it.
-    if K.backend() == 'cntk':
-        ones = K.ones_like(K.reshape(inputs[:, 0], (-1, 1)))
-        return K.tile(ones, (1, dims))
-    else:
-        return K.ones((K.shape(inputs)[0], dims))
+class _RNNAttentionCell(Layer):
+    """Base class for recurrent attention mechanisms.
 
+    This base class implements the RNN cell interface and defines a standard
+    way for attention mechanisms to interact with a (wrapped) "core" RNN cell
+    (such as the `SimpleRNNCell`, `GRUCell` or `LSTMCell`).
 
-def _generate_dropout_mask(ones, rate, training=None, count=1):
-    def dropped_inputs():
-        return K.dropout(ones, rate)
+    The main idea is that the attention mechanism, implemented by
+    `attention_call` in extensions of this class, computes an "attention
+    encoding", based on the attended input as well as the input and the core
+    cell state(s) at the current time step, which will be used as modified
+    input for the core cell.
 
-    if count > 1:
-        return [K.in_train_phase(
-            dropped_inputs,
-            ones,
-            training=training) for _ in range(count)]
-    return K.in_train_phase(
-        dropped_inputs,
-        ones,
-        training=training)
+    # Arguments
+        cell: A RNN cell instance. The cell to wrap by the attention mechanism.
+            A RNN cell is a class that has:
+            - a `call(input_at_t, states_at_t)` method, returning
+                `(output_at_t, states_at_t_plus_1)`.
+            - a `state_size` attribute. This can be a single integer
+                (single state) in which case it is the size of the recurrent
+                state (which should be the same as the size of the cell
+                output). This can also be a list/tuple of integers (one size
+                per state). In this case, the first entry (`state_size[0]`)
+                should be the same as the size of the cell output.
+        attend_after: Boolean (default False). If True, the attention
+            transformation defined by `attention_call` will be applied after
+            the core cell transformation (and the attention encoding will be
+            used as input for core cell transformation next time step).
+        concatenate_input: Boolean (default True). If True the concatenation of
+            the attention encoding and the original input will be used as input
+            for the core cell transformation. If set to False, only the
+            attention encoding will be used as input for the core cell
+            transformation.
 
+    # Abstract Methods and Properties
+        Extension of this class must implement:
+            - `attention_build` (method): Builds the attention transformation
+              based on input shapes.
+            - `attention_call` (method): Defines the attention transformation
+              returning the attention encoding.
+            - `attention_size` (property): After `attention_build` has been
+              called, this property should return the size (int) of the
+              attention encoding. Do this by setting `_attention_size` in scope
+              of `attention_build` or by implementing `attention_size`
+              property.
+        Extension of this class can optionally implement:
+            - `attention_state_size` (property): Default [`attention_size`].
+              If the attention mechanism has it own internal states (besides
+              the attention encoding which is by default the only part of
+              `attention_states`) override this property accordingly.
+        See docs of the respective method/property for further details.
 
-class GRUAttentionCell(GRUCell):
+    # Details of interaction between attention and cell transformations
+        Let "cell" denote core (wrapped) RNN cell and "att(cell)" the complete
+        attentive RNN cell defined by this class. We write the core cell
+        transformation as:
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        #self.state_size = self.units :for RNN, GRU
-        #self.state_size = (self.units, self.units) : for LSTM
-        #self.attn_length = 79
-        #self.attn_size = 79
-        #self.attn_vec_size = self.attn_size
-        #self.input_size = None
-        self.state_size = (self.units, 79*self.units)
-        #self.state_size = (self.units, self.units)
-        self.full_inputs = None
+            y{t}, s_cell{t+1} = cell.call(x{t}, s_cell{t})
 
+        where y{t} denotes the output, x{t} the input at and s_cell{t} the core
+        cell state(s) at time t and s_cell{t+1} the updated state(s).
+
+        We can then write the complete "attentive" cell transformation as:
+
+            y{t}, s_att(cell){t+1} = att(cell).call(x{t}, s_att(cell){t},
+                                                    constants=attended)
+
+        where s_att(cell) denotes the complete states of the attentive cell,
+        which consists of the core cell state(s) followed but the attention
+        state(s), and attended denotes the tensor attended to (note: no time
+        indexing as this is the same constant input at each time step).
+
+        Internally, this is how the attention transformation, implemented by
+        `attention_call`, interacts with the core cell transformation
+        `cell.call`:
+
+        - with `attend_after=False` (default):
+            a{t}, s_att{t+1} = att(cell).attention_call(x_t, s_cell{t},
+                                                        attended, s_att{t})
+            with `concatenate_input=True` (default):
+                x'{t} = [x{t}, a{t}]
+            else:
+                x'{t} = a{t}
+            y{t}, s_cell{t+1} = cell.call(x'{t}, s_cell{t})
+
+        - with `attend_after=True`:
+            with `concatenate_input=True` (default):
+                x'{t} = [x{t}, a{t-1}]
+            else:
+                x'{t} = a{t-1}
+            y{t}, s_cell{t+1} = cell.call(x'{t}, s_cell{t})
+            a{t}, s_att{t+1} = att(cell).attention_call(x_t, s_cell{t+1},
+                                                        attended, s_att{t})
+
+        where a{t} denotes the attention encoding, s_att{t} the attention
+        state(s), x'{t} the modified core cell input and [x{.}, a{.}] the
+        (tensor) concatenation of the input and attention encoding.
+    """
+
+    def __init__(self, cell,
+                 attend_after=False,
+                 concatenate_input=False,
+                 **kwargs):
+        self.cell = cell  # must be set before calling super
+        super(_RNNAttentionCell, self).__init__(**kwargs)
+        self.attend_after = attend_after
+        self.concatenate_input = concatenate_input
+        self.attended_spec = None
+        self._attention_size = None
+
+    def attention_call(self,
+                       inputs,
+                       cell_states,
+                       attended,
+                       attention_states,
+                       training=None):
+        """The main logic for computing the attention encoding.
+
+        # Arguments
+            inputs: The input at current time step.
+            cell_states: States for the core RNN cell.
+            attended: The same tensor(s) to attend at each time step.
+            attention_states: States dedicated for the attention mechanism.
+            training: whether run in training mode or not
+
+        # Returns
+            attention_h: The computed attention encoding at current time step.
+            attention_states: States to be passed to next `attention_call`. By
+                default this should be [`attention_h`].
+                NOTE: if additional states are used, these should be appended
+                after `attention_h`, i.e. `attention_states[0]` should always
+                be `attention_h`.
+        """
+        raise NotImplementedError(
+            '`attention_call` must be implemented by extensions of `{}`'.format(
+                self.__class__.__name__))
+
+    def attention_build(self, input_shape, cell_state_size, attended_shape):
+        """Build the attention mechanism.
+
+        NOTE: `self._attention_size` should be set in this method to the size
+        of the attention encoding (i.e. size of first `attention_states`)
+        unless `attention_size` property is implemented in another way.
+
+        # Arguments
+            input_shape: Tuple of integers. Shape of the input at a single time
+                step.
+            cell_state_size: List of tuple of integers.
+            attended_shape: List of tuple of integers.
+
+            NOTE: both `cell_state_size` and `attended_shape` will always be
+            lists - for simplicity. For example: even if (wrapped)
+            `cell.state_size` is an integer, `cell_state_size` will be a list
+            of this one element.
+        """
+        raise NotImplementedError(
+            '`attention_build` must be implemented by extensions of `{}`'.format(
+                self.__class__.__name__))
+
+    @property
+    def attention_size(self):
+        """Size off attention encoding, an integer.
+        """
+        if self._attention_size is None and self.built:
+            raise NotImplementedError(
+                'extensions of `{}` must either set property `_attention_size`'
+                ' in `attention_build` or implement the or implement'
+                ' `attention_size` in some other way'.format(
+                    self.__class__.__name__))
+
+        return self._attention_size
+
+    @property
+    def attention_state_size(self):
+        """Size of attention states, defaults to `attention_size`, an integer.
+
+        Modify this property to return list of integers if the attention
+        mechanism has several internal states. Note that the first size should
+        always be the size of the attention encoding, i.e.:
+            `attention_state_size[0]` = `attention_size`
+        """
+        return self.attention_size
+
+    @property
+    def state_size(self):
+        """Size of states of the complete attentive cell, a tuple of integers.
+
+        The attentive cell's states consists of the core RNN cell state size(s)
+        followed by attention state size(s). NOTE it is important that the core
+        cell states are first as the first state of any RNN cell should be same
+        as the cell's output.
+        """
+        state_size_s = []
+        for state_size in [self.cell.state_size, self.attention_state_size]:
+            if hasattr(state_size, '__len__'):
+                state_size_s += list(state_size)
+            else:
+                state_size_s.append(state_size)
+
+        return tuple(state_size_s)
+
+    def call(self, inputs, states, constants, training=None):
+        """Complete attentive cell transformation.
+        """
+        attended = constants
+        cell_states = states[:self._num_wrapped_states]
+        attention_states = states[self._num_wrapped_states:]
+
+        if self.attend_after:
+            attention_call = self.call_attend_after
+        else:
+            attention_call = self.call_attend_before
+
+        return attention_call(inputs=inputs,
+                              cell_states=cell_states,
+                              attended=attended,
+                              attention_states=attention_states,
+                              training=training)
+
+    def call_attend_before(self,
+                           inputs,
+                           cell_states,
+                           attended,
+                           attention_states,
+                           training=None):
+        """Complete attentive cell transformation, if `attend_after=False`.
+        """
+        attention_h, new_attention_states = self.attention_call(
+            inputs=inputs,
+            cell_states=cell_states,
+            attended=attended,
+            attention_states=attention_states,
+            training=training)
+
+        if self.concatenate_input:
+            cell_input = concatenate([attention_h, inputs])
+        else:
+            cell_input = attention_h
+
+        if has_arg(self.cell.call, 'training'):
+            output, new_cell_states = self.cell.call(cell_input, cell_states,
+                                                     training=training)
+        else:
+            output, new_cell_states = self.cell.call(cell_input, cell_states)
+
+        return output, new_cell_states + new_attention_states
+
+    def call_attend_after(self,
+                          inputs,
+                          cell_states,
+                          attended,
+                          attention_states,
+                          training=None):
+        """Complete attentive cell transformation, if `attend_after=True`.
+        """
+        attention_h_previous = attention_states[0]
+
+        if self.concatenate_input:
+            cell_input = concatenate([attention_h_previous, inputs])
+        else:
+            cell_input = attention_h_previous
+
+        if has_arg(self.cell.call, 'training'):
+            output, new_cell_states = self.cell.call(cell_input, cell_states,
+                                                     training=training)
+        else:
+            output, new_cell_states = self.cell.call(cell_input, cell_states)
+
+        attention_h, new_attention_states = self.attention_call(
+            inputs=inputs,
+            cell_states=new_cell_states,
+            attended=attended,
+            attention_states=attention_states,
+            training=training)
+
+        return output, new_cell_states, new_attention_states
+
+    @staticmethod
+    def _num_elements(x):
+        if hasattr(x, '__len__'):
+            return len(x)
+        else:
+            return 1
+
+    @property
+    def _num_wrapped_states(self):
+        return self._num_elements(self.cell.state_size)
+
+    @property
+    def _num_attention_states(self):
+        return self._num_elements(self.attention_state_size)
 
     def build(self, input_shape):
-        print('cell.build Shape:', input_shape)
-        #self.timesteps = input_shape[1]
-        input_dim = input_shape[-1]
-        self.states = [None, None]
-        self.kernel = self.add_weight(shape=(input_dim, self.units * 4),
-                                      name='kernel',
-                                      initializer=self.kernel_initializer,
-                                      regularizer=self.kernel_regularizer,
-                                      constraint=self.kernel_constraint)
+        """Builds attention mechanism and wrapped cell (if keras layer).
 
-        self.recurrent_kernel = self.add_weight(
-            shape=(self.units, self.units * 4),
-            name='recurrent_kernel',
-            initializer=self.recurrent_initializer,
-            regularizer=self.recurrent_regularizer,
-            constraint=self.recurrent_constraint)
+        Arguments:
+            input_shape: list of tuples of integers, the input feature shape
+                (inputs sequence shape without time dimension) followed by
+                constants (i.e. attended) shapes.
+        """
+        if not isinstance(input_shape, list):
+            raise ValueError('input shape should contain shape of both cell '
+                             'inputs and constants (attended)')
 
-        self.context_kernel = self.add_weight(
-            shape=(input_dim, self.units * 3),
-            name='context_kernel',
-            initializer=self.kernel_initializer,
-            regularizer=self.kernel_regularizer,
-            constraint=self.kernel_constraint)
-
-        if self.use_bias:
-            self.bias = self.add_weight(shape=(self.units * 4,),
-                                        name='bias',
-                                        initializer=self.bias_initializer,
-                                        regularizer=self.bias_regularizer,
-                                        constraint=self.bias_constraint)
+        attended_shape = input_shape[1:]
+        input_shape = input_shape[0]
+        self.attended_spec = [InputSpec(shape=shape) for shape in attended_shape]
+        if isinstance(self.cell.state_size, int):
+            cell_state_size = [self.cell.state_size]
         else:
-            self.bias = None
+            cell_state_size = list(self.cell.state_size)
+        self.attention_build(
+            input_shape=input_shape,
+            cell_state_size=cell_state_size,
+            attended_shape=attended_shape,
+        )
 
-        self.kernel_z = self.kernel[:,               : self.units * 1]
-        self.kernel_r = self.kernel[:, self.units * 1: self.units * 2]
-        self.kernel_h = self.kernel[:, self.units * 2: self.units * 3]
-        self.kernel_c = self.kernel[:, self.units * 3:]
+        if isinstance(self.cell, Layer):
+            cell_input_shape = (input_shape[0],
+                                self.attention_size +
+                                input_shape[-1] if self.concatenate_input
+                                else self._attention_size)
+            self.cell.build(cell_input_shape)
 
-        self.recurrent_kernel_z = self.recurrent_kernel[:,               : self.units * 1]
-        self.recurrent_kernel_r = self.recurrent_kernel[:, self.units * 1: self.units * 2]
-        self.recurrent_kernel_h = self.recurrent_kernel[:, self.units * 2: self.units * 3]
-        self.recurrent_kernel_c = self.recurrent_kernel[:, self.units * 3:]
-
-        self.context_kernel_z = self.context_kernel[:,               : self.units * 1]
-        self.context_kernel_r = self.context_kernel[:, self.units * 1: self.units * 2]
-        self.context_kernel_h = self.context_kernel[:, self.units * 2:]
-
-        if self.use_bias:
-            self.bias_z = self.bias[              : self.units * 1]
-            self.bias_r = self.bias[self.units * 1: self.units * 2]
-            self.bias_h = self.bias[self.units * 2: self.units * 3]
-            self.bias_c = self.bias[self.units * 3:]
-        else:
-            self.bias_z = None
-            self.bias_r = None
-            self.bias_h = None
-            self.bias_c = None
         self.built = True
 
-        """
-        # Parameter Shapes
-        kernel : (input_dim, units)
-        recurrent_kernel : (units, units)
-        bias : (units, )
-
-        # Inherited Parameters
-        kernel : z, r, h
-        recurrent_kernel : z, r, h
-        bias : z, r, h
-
-        # New Parameters
-        input_dim
-        kernel_c
-        recurrent_kernel_c
-        bias_c
-        """
-
-    def call(self, inputs, states, training=None):
-
-        h_tm1 = states[0]  # previous memory
-        if self.full_inputs is None:
-            self.full_inputs = states[-1]
-        full_inputs = self.full_inputs
-        timesteps = K.int_shape(full_inputs)[1]
-        print('cell.call Input Shape:', K.int_shape(inputs),
-              'Full State len:', len(states),
-              'State Shape:', K.int_shape(states[0]),
-              'Full h Shape:', K.int_shape(states[-1]))
-
-        if 0 < self.dropout < 1 and self._dropout_mask is None:
-            self._dropout_mask = _generate_dropout_mask(
-                _generate_dropout_ones(inputs, K.shape(inputs)[-1]),
-                self.dropout,
-                training=training,
-                count=4)
-        if (0 < self.recurrent_dropout < 1 and
-                self._recurrent_dropout_mask is None):
-            self._recurrent_dropout_mask = _generate_dropout_mask(
-                _generate_dropout_ones(inputs, self.units),
-                self.recurrent_dropout,
-                training=training,
-                count=4)
-
-        # dropout matrices for input units
-        dp_mask = self._dropout_mask
-        # dropout matrices for recurrent units
-        rec_dp_mask = self._recurrent_dropout_mask
-
-        if self.implementation == 1:
-            if 0. < self.dropout < 1.:
-                inputs_z = inputs * dp_mask[0]
-                inputs_r = inputs * dp_mask[1]
-                inputs_h = inputs * dp_mask[2]
-                inputs_c = inputs * dp_mask[3]
-            else:
-                inputs_z = inputs
-                inputs_r = inputs
-                inputs_h = inputs
-                inputs_c = inputs
-            x_z = K.dot(inputs_z, self.kernel_z)
-            x_r = K.dot(inputs_r, self.kernel_r)
-            x_h = K.dot(inputs_h, self.kernel_h)
-            x_c = K.dot(inputs_c, self.kernel_c)
-            if self.use_bias:
-                x_z = K.bias_add(x_z, self.bias_z)
-                x_r = K.bias_add(x_r, self.bias_r)
-                x_h = K.bias_add(x_h, self.bias_h)
-                x_c = K.bias_add(x_c, self.bias_c)
-
-            if 0. < self.recurrent_dropout < 1.:
-                h_tm1_z = h_tm1 * rec_dp_mask[0]
-                h_tm1_r = h_tm1 * rec_dp_mask[1]
-                h_tm1_h = h_tm1 * rec_dp_mask[2]
-                h_tm1_c = h_tm1 * rec_dp_mask[3]
-            else:
-                h_tm1_z = h_tm1
-                h_tm1_r = h_tm1
-                h_tm1_h = h_tm1
-                h_tm1_c = h_tm1
-
-            # calculate the context vector
-            #context = K.squeeze(K.batch_dot(at, self.x_seq, axes=1), axis=1)
-
-            # Attention Context Part
-            h_tm1_c = K.repeat(h_tm1_c, timesteps)
-            #h_tm1_c = full_inputs
-            print('h:', K.int_shape(full_inputs), 's0:', K.int_shape(h_tm1_c))
-            e = self.activation(h_tm1_c + K.dot(full_inputs, self.recurrent_kernel_c))
-            a = K.softmax(e)
-            print('A:', K.int_shape(a), 'inputs_c:', K.int_shape(inputs_c), 'full input:', K.int_shape(full_inputs))
-            c_t = K.sum(a * full_inputs, axis=1, keepdims=False)
-            #c_t = K.batch_dot(a, inputs_c, axes=1)
-
-            print('Done c_t:', K.int_shape(c_t))
-            print('Done context_kernel:', K.int_shape(self.context_kernel_z))
-            print('Done recurrent_kernel:', self.recurrent_kernel_z)
-            print('Done h_tm_z * rec:', K.dot(h_tm1_z, self.recurrent_kernel_z))
-
-            # GRU Part
-            z = self.recurrent_activation(x_z +
-                                          K.dot(h_tm1_z,
-                                                self.recurrent_kernel_z) +
-                                          K.dot(c_t, self.context_kernel_z))
-            r = self.recurrent_activation(x_r +
-                                          K.dot(h_tm1_r,
-                                                self.recurrent_kernel_r) +
-                                          K.dot(c_t, self.context_kernel_r))
-
-            hh = self.activation(x_h +
-                                 K.dot(r * h_tm1_h,
-                                       self.recurrent_kernel_h) +
-                                 K.dot(c_t, self.context_kernel_h))
-
-        else:
-            """
-            if 0. < self.dropout < 1.:
-                inputs *= dp_mask[0]
-            matrix_x = K.dot(inputs, self.kernel)
-            if self.use_bias:
-                matrix_x = K.bias_add(matrix_x, self.bias)
-            if 0. < self.recurrent_dropout < 1.:
-                h_tm1 *= rec_dp_mask[0]
-            matrix_inner = K.dot(h_tm1,
-                                 self.recurrent_kernel[:, :2 * self.units])
-
-            x_z = matrix_x[:, :self.units]
-            x_r = matrix_x[:, self.units: 2 * self.units]
-            recurrent_z = matrix_inner[:, :self.units]
-            recurrent_r = matrix_inner[:, self.units: 2 * self.units]
-
-            z = self.recurrent_activation(x_z + recurrent_z)
-            r = self.recurrent_activation(x_r + recurrent_r)
-
-            x_h = matrix_x[:, 2 * self.units:]
-            recurrent_h = K.dot(r * h_tm1,
-                                self.recurrent_kernel[:, 2 * self.units:])
-            hh = self.activation(x_h + recurrent_h)
-            """
-            pass
-
-        h = z * h_tm1 + (1 - z) * hh
-        if 0 < self.dropout + self.recurrent_dropout:
-            if training is None:
-                h._uses_learning_phase = True
-
-        print(K.int_shape(states[-1]))
-        states = [h] + [states[-1]]
-        return h, [h, self.full_inputs]
-
-
-class MyRNNAttention(RNN):
-
-    def get_initial_state(self, inputs):
-        # build an all-zero tensor of shape (samples, output_dim)
-        initial_state = K.zeros_like(inputs)  # (samples, timesteps, input_dim)
-        initial_state = K.sum(initial_state, axis=(1, 2))  # (samples,)
-        initial_state = K.expand_dims(initial_state)  # (samples, 1)
+    def compute_output_shape(self, input_shape):
         if hasattr(self.cell.state_size, '__len__'):
-            state = [K.tile(initial_state, [1, dim])
-                     for dim in self.cell.state_size[:-1]]
+            cell_output_dim = self.cell.state_size[0]
         else:
-            state = [K.tile(initial_state, [1, self.cell.state_size])]
+            cell_output_dim = self.cell.state_size
 
-        full_inputs = [inputs]
-        return state + full_inputs
+        return input_shape[0], cell_output_dim
+
+    @property
+    def trainable_weights(self):
+        return super(_RNNAttentionCell, self).trainable_weights + \
+               self.cell.trainable_weights
+
+    @property
+    def non_trainable_weights(self):
+        return super(_RNNAttentionCell, self).non_trainable_weights + \
+               self.cell.non_trainable_weights
+
+    def get_config(self):
+        config = {'attend_after': self.attend_after,
+                  'concatenate_input': self.concatenate_input}
+
+        cell_config = self.cell.get_config()
+        config['cell'] = {'class_name': self.cell.__class__.__name__,
+                          'config': cell_config}
+        base_config = super(_RNNAttentionCell, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+
+class MixtureOfGaussian1DAttention(_RNNAttentionCell):
+    """RNN attention mechanism for attending sequences.
+
+    The attention encoding (passed to the wrapped core RNN cell) is obtained by
+    letting the attention mechanism predict a Mixture of Gaussian distribution
+    (MoG) over the time dimension of the attended feature sequence. The
+    attention encoding is taken as the weighted sum of all features - where the
+    weight is given by the probability density function (evaluated in the
+    respective time step) according the predicted MoG distribution.
+
+    # Arguments
+        components: Positive integer, the number of mixture components to use
+            (for each head, see below).
+        heads: Positive integer (Default 1), the number of independent "read
+            heads" to use. Each head produces an independent (sub) attention
+            encoding, by predicting an independent MoG each. The (full)
+            attention encoding passed to the wrapped core RNN cell is the
+            concatenation of the attention encodings from each head. See "Notes
+            on multiple heads vs multiple components" below.
+        mu_activation: The activation function applied (after learnt linear
+            transformation) for mu:s (expectation value/location) of each
+            Gaussian component.
+        sigma_activation: The activation function applied (after learnt linear
+            transformation) for sigma:s (standard deviation) of each Gaussian
+            component. *NOTE* that this function should only return values > 0.
+        sigma_epsilon: Positive Float, this value is added to sigma to force it
+            to be at least this value.
+        predict_delta_mu: Boolean (Default True), whether or not to let the
+            attention mechanism to predict the _change_ in location (mu) of
+            each mixture component. This is recommended as it usually leads to
+            more stable convergence. By passing a `mu_activation` that always
+            returns a value > 0 and having `predict_delta_mu=True` it is
+            enforced that the attention mechanism "parses" the attended
+            sequence "from start to end" as the attention can not be moved
+            backwards.
+        For initializers, regularizers & constraints: See docs of Dense layer.
+
+    # Notes on multiple heads vs multiple components
+        A single head can "attend to multiple parts of the sequence" by
+        using multiple components. However, the features from the location of
+        the components are averaged together by a weighted sum (no
+        information is kept on their internal ordering for example). With
+        multiple heads, on the other side, the attention mechanism can "pick
+        out" features from multiple locations without averaging them, and
+        passing them "intact" to the core RNN cell. This is done at the cost of
+        a larger input vector to, and thereby more parameters of, the core RNN
+        cell.
+
+    # Example - Machine Translation with Attention and "teacher forcing"
+        # NOTE that this is a minimal naive example, this setup will not
+        # perform well for machine translation in general.
+        # TODO add `examples/machine_translation_with_attention.py`
+        # with performing setup
+
+        input_english = Input((None, tokens_english))
+        target_french_tm1 = Input((None, tokens_french))
+
+        cell = MixtureOfGaussian1DAttention(LSTMCell(64), components=3, heads=3)
+        attention_lstm = RNN(cell, return_sequences=True)
+        h_sequence = attention_lstm(target_french_tm1, constants=input_english)
+        output_layer = TimeDistributed(Dense(tokens_french, activation='softmax'))
+        predicted_french = output_layer(h_sequence)
+
+        train_model = Model(
+            inputs=[target_french_tm1, input_english],
+            outputs=predicted_french
+        )
+        model.compile(optimizer='Adam', loss='categorical_crossentropy')
+        model.fit(
+            x=[french_text[:, :-1], english_text],
+            y=french_text[:, 1:],
+            epochs=10
+        )
+    """
+    def __init__(self, cell,
+                 components,
+                 heads=1,
+                 mu_activation=None,
+                 sigma_activation='exponential',
+                 sigma_epsilon=1e-3,
+                 predict_delta_mu=True,  # TODO alternative name `cumulative_mu`?
+                 kernel_initializer='glorot_uniform',  # FIXME most likely not optimal
+                 bias_initializer='zeros',
+                 kernel_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 kernel_constraint=None,
+                 bias_constraint=None,
+                 **kwargs):
+        super(MixtureOfGaussian1DAttention, self).__init__(cell, **kwargs)
+        self.components = components
+        self.heads = heads
+        self.mu_activation = activations.get(mu_activation)
+        self.sigma_activation = activations.get(sigma_activation)
+        self.sigma_epsilon = sigma_epsilon
+        self.predict_delta_mu = predict_delta_mu
+        self.kernel_initializer = initializers.get(kernel_initializer)
+        self.bias_initializer = initializers.get(bias_initializer)
+        self.kernel_regularizer = regularizers.get(kernel_regularizer)
+        self.bias_regularizer = regularizers.get(bias_regularizer)
+        self.activity_regularizer = regularizers.get(activity_regularizer)
+        self.kernel_constraint = constraints.get(kernel_constraint)
+        self.bias_constraint = constraints.get(bias_constraint)
+
+    @property
+    def attention_state_size(self):
+        """Size of states dedicated for the attention mechanism.
+
+        If self.predict_delta_mu is True, mu (the "location") for all heads'
+        components needs to be forwarded to next time step and is therefore
+        added to the attention states.
+        """
+        attention_state_size = [self.attention_size]
+        if self.predict_delta_mu:
+            mu_size = self.components * self.heads
+            attention_state_size.append(mu_size)
+
+        return attention_state_size
+
+    def attention_call(self,
+                       inputs,
+                       cell_states,
+                       attended,
+                       attention_states,
+                       training=None):
+        # only one attended sequence for now (verified in build)
+        [attended] = attended
+        mu_tm1 = attention_states[1] if self.predict_delta_mu else None
+
+        mog_input = concatenate([inputs, cell_states[0]])
+        params = K.bias_add(K.dot(mog_input, self.kernel), self.bias)
+
+        # dynamic creation of time index
+        # TODO check support by all backends
+        # TODO faster with non-dynamic if size of time dimension is fixed?
+        time_idx = K.arange(K.shape(attended)[1], dtype='float32')
+        time_idx = K.expand_dims(K.expand_dims(time_idx, 0), -1)
+
+        if self.heads == 1:
+            attention_h, mu = self._get_attention_h_and_mu(params, attended,
+                                                           mu_tm1, time_idx)
+        else:
+            c = self.components
+            attention_h_s, mu_s = zip(*[
+                self._get_attention_h_and_mu(
+                    params=params[..., c * i * 3:c * (i+1) * 3],
+                    attended=attended,
+                    mu_tm1=(mu_tm1[..., c * i:c * (i+1)]
+                            if self.predict_delta_mu else None),
+                    time_idx=time_idx
+                ) for i in range(self.heads)
+            ])
+            attention_h = concatenate(list(attention_h_s))
+            mu = concatenate(list(mu_s))
+
+        new_attention_states = [attention_h]
+        if self.predict_delta_mu:
+            new_attention_states.append(mu)
+
+        return attention_h, new_attention_states
+
+    def _get_attention_h_and_mu(self, params, attended, mu_tm1, time_idx):
+        """Computes the attention encoding for "one head".
+
+        # Arguments
+            params: The MoG params (before activation) for one head.
+            attended: The attended sequence (tensor).
+            mu_tm1: mu from previous time step (tensor) if self.use_delta is
+                True otherwise None.
+            time_idx: Time index of the attended (tensor).
+
+        # Returns
+            attention_h: The attention encoding for the attention of one head.
+            mu: the location(s) of each mixture component for one head.
+        """
+        def sigma_activation(x):
+            return self.sigma_activation(x) + self.sigma_epsilon
+
+        mixture_weights, mu, sigma = [
+            activation(params[..., i * self.components:(i + 1) * self.components])
+            for i, activation in enumerate(
+                [K.softmax, self.mu_activation, sigma_activation])]
+
+        if self.predict_delta_mu:
+            mu += mu_tm1
+
+        mixture_weights_, mu_, sigma_ = [
+            K.expand_dims(p, 1) for p in [mixture_weights, mu, sigma]]
+
+        attention_w = K.sum(
+            mixture_weights_ * K.exp(- sigma_ * K.square(mu_ - time_idx)),
+            # NOTE no normalisation was carried out in original paper by A. Graves
+            axis=-1,
+            keepdims=True
+        )
+        attention_h = K.sum(attention_w * attended, axis=1)
+
+        return attention_h, mu
+
+    def attention_build(self, input_shape, cell_state_size, attended_shape):
+        if not len(attended_shape) == 1:
+            raise ValueError('only a single attended supported')
+        attended_shape = attended_shape[0]
+        if not len(attended_shape) == 3:
+            raise ValueError('only support attending tensors with dim=3')
+
+        # NOTE _attention_size must always be set in `attention_build`
+        self._attention_size = attended_shape[-1] * self.heads
+        mog_in_dim = (input_shape[-1] + cell_state_size[0])
+        mog_out_dim = self.heads * self.components * 3
+        self.kernel = self.add_weight(
+            shape=(mog_in_dim, mog_out_dim),
+            initializer=self.kernel_initializer,
+            name='kernel',
+            regularizer=self.kernel_regularizer,
+            constraint=self.kernel_constraint)
+        self.bias = self.add_weight(shape=(mog_out_dim,),
+                                    initializer=self.bias_initializer,
+                                    name='bias',
+                                    regularizer=self.bias_regularizer,
+                                    constraint=self.bias_constraint)
+
+    def get_config(self):
+        config = {
+            'components': self.components,
+            'heads': self.heads,
+            'mu_activation': activations.serialize(self.mu_activation),
+            'sigma_activation': activations.serialize(self.sigma_activation),
+            'sigma_epsilon': self.sigma_epsilon,
+            'predict_delta_mu': self.predict_delta_mu,
+            'kernel_initializer': initializers.serialize(self.kernel_initializer),
+            'bias_initializer': initializers.serialize(self.bias_initializer),
+            'kernel_regularizer': regularizers.serialize(self.kernel_regularizer),
+            'bias_regularizer': regularizers.serialize(self.bias_regularizer),
+            'activity_regularizer': regularizers.serialize(self.activity_regularizer),
+            'kernel_constraint': constraints.serialize(self.kernel_constraint),
+            'bias_constraint': constraints.serialize(self.bias_constraint)
+        }
+        base_config = super(MixtureOfGaussian1DAttention, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
