@@ -17,7 +17,10 @@ from keras.utils.generic_utils import has_arg
 from keras.legacy.layers import Recurrent
 from keras.legacy import interfaces
 
-from keras.layers import (RNN, GRUCell, GRU,
+from keras.layers import (RNN,
+                          SimpleRNNCell,
+                          GRUCell, GRU,
+                          Wrapper,
                           _generate_dropout_ones,
                           _generate_dropout_mask)
 
@@ -48,13 +51,17 @@ class Skeleton(RNN):
         pass
 
 
-# %% Attention(Cell) Wrapper --------------------------------------------------------
+# %% Attention(Cell) Wrapper --------------------------------------------------
+
 
 class CellWrapper(SimpleRNNCell):
     def __init__(self, cell, *args, **kwargs):
         super(CellWrapper, self).__init__(**kwargs)
         self._cell = cell
-        #self._cell.__init__(*args, **kwargs)
+        self.attn_length = 3
+        self.attn_size = self._cell.output_size
+        self._attn_vec_size = self.attn_size
+        # self._cell.__init__(*args, **kwargs)
 
     @property
     def units(self):
@@ -124,14 +131,30 @@ class CellWrapper(SimpleRNNCell):
     def implementation(self):
         return self.cell.implementation
 
+        return self.cell.implementation
+
+    @property
+    def weights(self):
+        return [self._cell.weights, self.weights]
+
+    def get_weights(self):
+        return [self._cell.get_weights(), self.get_weights()]
+
     def build(self, input_shape):
         self._cell.build(input_shape)
         if self.built is None:
             self.built = True
 
-    def call(self, inputs, states, training=None):
+    def call(self, inputs, states, training=None, constants=inputs):
 
-        cell_output, new_state = self._cell.call(inputs, state, training=None)
+        full_inputs = constants
+        full_h = constants
+
+
+        e = K.tanh(full_h + states)
+        attn_vec = K.sum(softmax(e) * full_h, axis=0)
+
+        cell_output, new_state = self._cell.call(inputs, states, training=None)
 
         output = cell_output
         state = new_state
@@ -142,7 +165,7 @@ class CellWrapper(SimpleRNNCell):
 class AttentionCellWrapper(CellWrapper):
 
     def __init__(self, cell, *args, **kwargs):
-        super(AttentionCellWrapper, self).__init__(*args, **kwargs):
+        super(AttentionCellWrapper, self).__init__(*args, **kwargs)
 
         pass
 
