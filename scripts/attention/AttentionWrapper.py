@@ -10,19 +10,24 @@ from keras import regularizers
 from keras import constraints
 from keras.engine import Layer
 from keras.engine import InputSpec
-from ..engine.topology import _object_list_uid
+from keras.engine.topology import _object_list_uid
 from keras.utils.generic_utils import has_arg
 
 # Legacy support.
 from keras.legacy.layers import Recurrent
 from keras.legacy import interfaces
 
+from keras.layers import Input
 from keras.layers import (RNN,
                           SimpleRNNCell,
+                          LSTMCell, LSTM,
                           GRUCell, GRU,
-                          Wrapper,
-                          _generate_dropout_ones,
-                          _generate_dropout_mask)
+                          Layer, Input,
+                          Wrapper)
+
+from keras import Model
+#from keras.layers.recurrent import (_generate_dropout_ones,
+#                                    _generate_dropout_mask)
 
 
 # %% Skeleton -----------------------------------------------------------------
@@ -145,7 +150,7 @@ class CellWrapper(SimpleRNNCell):
         if self.built is None:
             self.built = True
 
-    def call(self, inputs, states, training=None, constants=inputs):
+    def call(self, inputs, states, constants, training=None):
 
         full_inputs = constants
         full_h = constants
@@ -160,6 +165,8 @@ class CellWrapper(SimpleRNNCell):
         state = new_state
 
         return output, state
+
+    def attention_call(self, inputs, states, constants, training=None):
 
 
 class AttentionCellWrapper(CellWrapper):
@@ -233,7 +240,65 @@ class MinimalRNNCell(Layer):
         output = h + K.dot(prev_output, self.recurrent_kernel)
         return output, [output]
 
+# %%
 
+class ATTRNNCell(Layer):
+
+    def __init__(self, units, attn_size, attn_length,
+                 activation='tanh',
+                 **kwargs):
+        super(ATTRNNCell, self).__init__(**kwargs)
+        self.units = units
+        self._attn_size = attn_size
+        self._attn_length = attn_length
+        self._state_size = self.units
+        #self.state_size = (self.units,
+        #                   self._attn_size,
+        #                   self._attn_size * self._attn_length)
+        self.activation = activations.get(activation)
+
+    @property
+    def state_size(self):
+        #state_size = self.units
+
+        state_size_a = []
+        for state_size in [self._state_size, self._attn_size]:
+            state_size_a.append(state_size)
+
+        state_size_a = [self.units, (self.units, 3)]
+        return state_size_a
+
+    def build(self, input_shape):
+        input_dim = input_shape[-1]
+        self.kernel = self.add_weight(shape=(input_dim, self.units),
+                                      initializer='uniform',
+                                      name='kernel')
+        self.recurrent_kernel = self.add_weight(
+            shape=(self.units, self.units),
+            initializer='uniform',
+            name='recurrent_kernel')
+        self.built = True
+
+        self.attn_kernel = self.add_weight(shape=(input_dim, self.units),
+                                           initializer='uniform',
+                                           name='attn_kernel')
+
+    def call(self, inputs, states):
+        prev_output = states[0]
+        attn_state = states[1:]
+        h = K.dot(inputs, self.kernel)
+        output = h + K.dot(prev_output, self.recurrent_kernel)
+        output = self.activation(output)
+        return output, [output] + list(attn_state)
+
+aa = Input(shape=(3, 1), dtype='float32')
+bb = ATTRNNCell(2, 3, 3)
+cc = RNN(bb, return_sequences=True, return_state=True)(aa)
+#cc = LSTM(2, return_sequences=True, return_state=True)(aa)
+dd = Model(inputs=aa, outputs=cc)
+dd.summary()
+
+# %%
 """
 # Let's use this cell in a RNN layer:
 
