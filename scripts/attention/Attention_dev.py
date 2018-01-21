@@ -104,7 +104,7 @@ class ATTRNN(RNN):
                  stateful=False,
                  unroll=False,
                  **kwargs):
-        super(ATTRNN, self).__init__(**kwargs)
+        super(ATTRNN, self).__init__(cell, **kwargs)
         #self.cell = cell
         #self.return_sequences = return_sequences
         #self.return_state = return_state
@@ -270,7 +270,7 @@ class ATTRNN(RNN):
             def step(inputs, states):
                 return self.cell.call(inputs, states, **kwargs)
 
-        last_output, outputs, states = K.rnn(step,
+        last_output, outputs, states = fullrnn(step,
                                              inputs,
                                              initial_state,
                                              constants=constants,
