@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 import numpy as np
 import warnings
+from pprint import pprint
 
 from keras import backend as K
 from keras import activations
@@ -26,9 +27,34 @@ from keras.layers import (RNN,
                           Wrapper)
 
 from keras import Model
+from keras.callbacks import Callback, LambdaCallback
+
 #from keras.layers.recurrent import (_generate_dropout_ones,
 #                                    _generate_dropout_mask)
 
+
+# %% CallBack -----------------------------------------------------------------
+
+class LossHistory(Callback):
+    def on_train_begin(self, logs={}):
+        self.losses = []
+        self.weights = []
+        self.states = []
+
+    def on_batch_begin(self, batch, logs={}):
+        self.weights.append([{'begin_' + layer.name: layer.get_weights()}
+                             for layer in model.layers])
+
+    def on_batch_end(self, batch, logs={}):
+        self.losses.append(logs.get('loss'))
+        self.weights.append([{'end_' + layer.name: layer.get_weights()}
+                             for layer in model.layers])
+
+
+history = LossHistory()
+
+print_weights = LambdaCallback(on_epoch_end=lambda batch,
+                               logs: pprint(model.layers[0].get_weights()))
 
 # %% Skeleton -----------------------------------------------------------------
 
@@ -190,8 +216,7 @@ class CellWrapper(Layer):
 aa = Input(shape=(3, 2), dtype='float32')
 bb = SimpleRNNCell(2)
 cc = CellWrapper(bb)
-dd = RNN(cc, return_sequences=True, return_state=True)(aa)
-#cc = LSTM(2, return_sequences=True, return_state=True)(aa)
+dd = RNN(cc, return_sequences=True, return_state=False)(aa)
 ee = Model(inputs=aa, outputs=dd)
 ee.summary()
 
@@ -206,6 +231,7 @@ cc.trainable
 cc.trainable_weights
 cc.count_params()
 
+ee.get_weights()
 # %% Learning -----------------------------------------------------------------
 
 import numpy as np
@@ -230,8 +256,15 @@ fitted = model.fit(train_X, train_Y,
                    verbose=2,       # 1: progress bar, 2: one line per epoch
                    #validation_data=(testX, testY),  # Validation set
                    shuffle=True,
-                   #callbacks=[history],
+                   callbacks=[history],
                   )
 
 # Save model
-model.save('gru_attention_embedding_model.h5')
+model.save('cell_wrapper_model.h5')
+
+
+fitted.history
+
+history.weights
+
+ee.get_weights()
