@@ -204,7 +204,8 @@ class CellWrapper(Layer):
 
     def call(self, inputs, states, training=None, constants=None):
         new_inputs, new_states = self._cell.call(inputs, states,
-                                                 training=training)
+                                                 training=training,
+                                                 constants=constants)
 
         new_inputs = K.dot(self.kk, new_inputs)
         new_inputs = K.bias_add(new_inputs, self.bb)
@@ -248,7 +249,7 @@ BATCH_SIZE = 3
 print('EPOCH_NUM: %s, BATCH_SIZE %s' % (EPOCH_NUM, BATCH_SIZE))
 
 model = ee
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
+model.compile(optimizer='adam', loss='mae', metrics=['mae'])
 fitted = model.fit(train_X, train_Y,
                    epochs=10,     # How many times to run back_propagation
                    batch_size=2,  # How many data to deal with at one epoch
