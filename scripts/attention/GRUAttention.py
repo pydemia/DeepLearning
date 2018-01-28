@@ -597,6 +597,3 @@ class GRUAttention(RNN):
             config['implementation'] = 1
         return cls(**config)
 
-
-class aa:
-    pass
