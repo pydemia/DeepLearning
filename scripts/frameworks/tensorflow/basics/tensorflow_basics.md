@@ -9,7 +9,10 @@ import tensorflow as tf
 ## The Bottom-line of `tensorflow`
 
 Tensorflow : `Tensor` + `Flow`.  
-It mean
+It shows the key factor of `Tensorflow`.  
+This Framework have 2 steps:
+* Construct a Calculation Graph with `Tensor`s  
+* Run the session flowing the Data through the `Tensor` Structure.
 
 
 * `Tensor` : The __Containers__ for Data.
@@ -66,8 +69,6 @@ with tf.Session() as sess:
 
 ## Variables
 
-
-* [The Bottom-Line of `tensorflow`]()
   - [Tensor]()
     - `tf.Variable`
     ```py
@@ -92,6 +93,26 @@ with tf.Session() as sess:
 
 * [Basic Objects]()
   - [Data Types]()
+
+| Data Types | Name in `Python` | Description |
+| :--------- | :--------------- | :---------- |
+| DT_FLOAT | tf.float32 | 32 bits floating point. |
+| DT_DOUBLE | tf.float64 | 64 bits floating point. |
+| DT_INT8 | tf.int8 | 8 bits signed integer. |
+| DT_INT16 | tf.int16 | 16 bits signed integer. |
+| DT_INT32 | tf.int32 | 32 bits signed integer. |
+| DT_INT64 | tf.int64 | 64 bits signed integer. |
+| DT_UINT8 | tf.uint8 | 8 bits unsigned integer. |
+| DT_UINT16	| tf.uint16 | 16 bits unsigned integer. |
+| DT_STRING	| tf.string | Variable length byte arrays. Each element of a Tensor is a byte array. |
+| DT_BOOL | tf.bool | Boolean. |
+| DT_COMPLEX64 | tf.complex64 | Complex number made of two 32 bits floating points: real and imaginary parts. |
+| DT_COMPLEX128 | tf.complex128 | Complex number made of two 64 bits floating points: real and imaginary parts. |
+| DT_QINT8 | tf.qint8 | 8 bits signed integer used in quantized Ops. |
+| DT_QINT32 | tf.qint32 | 32 bits signed integer used in quantized Ops. |
+| DT_QUINT8 | tf.quint8 | 8 bits unsigned integer used in quantized Ops. |
+
+
     - [Constants]()
     - [Sequences]()
     - [Randoms]()
