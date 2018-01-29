@@ -106,8 +106,8 @@ with tf.Session() as sess:
 | DT_UINT16	| tf.uint16 | 16 bits unsigned integer. |
 | DT_STRING	| tf.string | Variable length byte arrays. Each element of a Tensor is a byte array. |
 | DT_BOOL | tf.bool | Boolean. |
-| DT_COMPLEX64 | tf.complex64 | Complex number made of two 32 bits floating points: <\br>real and imaginary parts. |
-| DT_COMPLEX128 | tf.complex128 | Complex number made of two 64 bits floating points: <\br>real and imaginary parts. |
+| DT_COMPLEX64 | tf.complex64 | Complex number made of two 32 bits floating points: <br/>real and imaginary parts. |
+| DT_COMPLEX128 | tf.complex128 | Complex number made of two 64 bits floating points: <br/>real and imaginary parts. |
 | DT_QINT8 | tf.qint8 | 8 bits signed integer used in quantized Ops. |
 | DT_QINT32 | tf.qint32 | 32 bits signed integer used in quantized Ops. |
 | DT_QUINT8 | tf.quint8 | 8 bits unsigned integer used in quantized Ops. |
