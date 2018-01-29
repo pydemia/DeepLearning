@@ -22,9 +22,9 @@ Pure Deep Learning Algorithm in Python.
 
 ## Frameworks
 
-* [__Tensorflow__](scripts/frameworks/tensorflow/README.md)
-* [__Keras__](scripts/frameworks/keras/README.md)
-* [__Pytorch__](scripts/frameworks/pytorch/README.md)
+### [__Tensorflow__](scripts/frameworks/tensorflow/README.md)
+### [__Keras__](scripts/frameworks/keras/README.md)
+### [__Pytorch__](scripts/frameworks/pytorch/README.md)
 
 
 ## Networks
