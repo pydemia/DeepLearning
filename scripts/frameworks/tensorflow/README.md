@@ -4,9 +4,9 @@
 
 * [The Bottom-Line of `tensorflow`]()
   - [Tensor]()
-  - [Scope]()
   - [Session]()
     - [`tf.Session.run()` vs `Tensor.eval()`]()
+  - [Scope]()
 
 * [Basic Objects]()
   - [Data Types]()
