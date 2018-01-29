@@ -15,7 +15,7 @@ This Framework have 2 steps:
 * Run the session flowing the Data through the `Tensor` Structure.
 
 
-#### `Tensor` : The __Containers__ for Data.
+##### `Tensor` : The __Containers__ for Data.
 
 ```py
 a = tf.constant(3.0, dtype=tf.float32)
@@ -34,7 +34,8 @@ Tensor("add:0", shape=(), dtype=float32)
 ```
 
 
-#### `Session`: Running the processor to __Flow__ the Data to the `Tensor Graph`, which is built by `Tensors` and `Scopes`.
+
+##### `Session`: Running the processor to __Flow__ the Data to the `Tensor Graph`, which is built by `Tensors` and `Scopes`.
   - `tf.Session()`
 
 ```py
@@ -48,7 +49,8 @@ with tf.Session() as sess:
   print(sess.run(*args))
 ```
 
-#### `Scope` : The __Local Namespaces__ for Each `Tensor Variables`.
+
+##### `Scope` : The __Local Namespaces__ for Each `Tensor Variables`.
 
 Global Variable Scope:
 ```py
