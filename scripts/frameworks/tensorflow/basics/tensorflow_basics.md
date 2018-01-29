@@ -67,30 +67,6 @@ with tf.Session() as sess:
   - `tf.Graph()`
 
 
-## Variables
-
-  - [Tensor]()
-    - `tf.Variable`
-    ```py
-    a = tf.Variable(.3, name='sample_variable')
-    ```
-    
-    - `tf.constant`
-    ```py
-    a = tf.constant([.3, .1, .2, .5, .1, .8], shape=[2, 3],
-                    name='sample_constant', dtype=np.float32)
-    ```
-    
-    - `tf.placeholder`
-    ```py
-    a = tf.placeholder(tf.float32, shape=[None, 3],
-                       name='test_placeholder)
-    ```
-  - [Scope]()
-  
-  - [Session]()
-    - [`tf.Session.run()` vs `Tensor.eval()`]()
-
 ## Basic Objects
 
 ### Data Types
@@ -120,21 +96,39 @@ with tf.Session() as sess:
 `Tensor`: The Basic Structure of `tensorflow`.  
 It has `Rank`, `Shape`, and `Data Type`.
 
-#### Rank
+* __Rank & Shape__
 A unit of dimensionality. The number of dimensions of the `Tensor`.
 
-| Rank | Math Entity | Example | Result |
+| Rank | Math Entity | Example | Shape |
 | :--------: | :--------------- | :---------- | :-------- |
 | 0 | Scalar | `s = 10` | `()` |
 | 1 | Vector | `v = [0, 2, 1]` | `(3,)` |
 | 2 | Matrix | `m = [[0, 2, 1], [8, 4, 3], [9, 5, 7]]` | `(3, 3)` |
 | 3 | 3D-Tensor | `t = [[[0, 2], [1, 8]], [[4, 3], [9, 5]], [[7, 0], [2, 1]]]` | `(3, 2, 2)` |
-| n | n-Tensor | `....` | `n = [[[[0, 2], [1, 8]], [[4, 3], [9, 5]], [[7, 0], [2, 1]]], [[[8, 4], [3, 9]], [[5, 7], [0, 2]], [[1, 8], [4, 3]]]]` | '(2, 3, 2, 2)` |
+| n | n-Tensor | `n = [[[[0, 2], [1, 8]], [[4, 3], [9, 5]], [[7, 0], [2, 1]]], [[[8, 4], [3, 9]], [[5, 7], [0, 2]], [[1, 8], [4, 3]]]]` | '(2, 3, 2, 2)` |
 
 
-#### Shape
+- `tf.constant` : It has only the constant values.
+```py
+a = tf.constant([.3, .1, .2, .5, .1, .8], shape=[2, 3],
+                name='sample_constant', dtype=np.float32)
+```
 
+- `tf.Variable` : It has parameters(like `weights`) and can be updated. It needs to be initialized.
+```py
+a = tf.Variable(.3, name='sample_variable')
+```
 
+- `tf.placeholder` : It is a kind of fixed structure to flow  the data.  
+                     It has only the `Shapes` and `Data Types`, not `Values` by itself.
+```py
+a = tf.placeholder(tf.float32, shape=[None, 3],
+                   name='test_placeholder)
+```
+  - [Scope]()
+  
+  - [Session]()
+    - [`tf.Session.run()` vs `Tensor.eval()`]()
 
 
     - [Constants]()
