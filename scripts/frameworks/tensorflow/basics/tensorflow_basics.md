@@ -91,31 +91,52 @@ with tf.Session() as sess:
   - [Session]()
     - [`tf.Session.run()` vs `Tensor.eval()`]()
 
-* [Basic Objects]()
-  - [Data Types]()
+## Basic Objects
+
+### Data Types
 
 | Data Types | Name in `Python` | Description |
 | :--------- | :--------------- | :---------- |
-| DT_FLOAT | tf.float32 | 32 bits floating point. |
-| DT_DOUBLE | tf.float64 | 64 bits floating point. |
-| DT_INT8 | tf.int8 | 8 bits signed integer. |
-| DT_INT16 | tf.int16 | 16 bits signed integer. |
-| DT_INT32 | tf.int32 | 32 bits signed integer. |
-| DT_INT64 | tf.int64 | 64 bits signed integer. |
-| DT_UINT8 | tf.uint8 | 8 bits unsigned integer. |
-| DT_UINT16	| tf.uint16 | 16 bits unsigned integer. |
-| DT_STRING	| tf.string | Variable length byte arrays. Each element of a Tensor is a byte array. |
-| DT_BOOL | tf.bool | Boolean. |
-| DT_COMPLEX64 | tf.complex64 | Complex number made of two 32 bits floating points: <br/>real and imaginary parts. |
-| DT_COMPLEX128 | tf.complex128 | Complex number made of two 64 bits floating points: <br/>real and imaginary parts. |
-| DT_QINT8 | tf.qint8 | 8 bits signed integer used in quantized Ops. |
-| DT_QINT32 | tf.qint32 | 32 bits signed integer used in quantized Ops. |
-| DT_QUINT8 | tf.quint8 | 8 bits unsigned integer used in quantized Ops. |
+| DT_FLOAT | `tf.float32` | 32 bits floating point. |
+| DT_DOUBLE | `tf.float64` | 64 bits floating point. |
+| DT_INT8 | `tf.int8` | 8 bits signed integer. |
+| DT_INT16 | `tf.int16` | 16 bits signed integer. |
+| DT_INT32 | `tf.int32` | 32 bits signed integer. |
+| DT_INT64 | `tf.int64` | 64 bits signed integer. |
+| DT_UINT8 | `tf.uint8` | 8 bits unsigned integer. |
+| DT_UINT16	| `tf.uint16` | 16 bits unsigned integer. |
+| DT_STRING	| `tf.string` | Variable length byte arrays. Each element of a Tensor is a byte array. |
+| DT_BOOL | `tf.bool` | Boolean. |
+| DT_COMPLEX64 | `tf.complex64` | Complex number made of two 32 bits floating points: <br/>real and imaginary parts. |
+| DT_COMPLEX128 | `tf.complex128` | Complex number made of two 64 bits floating points: <br/>real and imaginary parts. |
+| DT_QINT8 | `tf.qint8` | 8 bits signed integer used in quantized Ops. |
+| DT_QINT32 | `tf.qint32` | 32 bits signed integer used in quantized Ops. |
+| DT_QUINT8 | `tf.quint8` | 8 bits unsigned integer used in quantized Ops. |
+
+
+  
+### Data Structures
+  
+`Tensor`: The Basic Structure of `tensorflow`.  
+It has `Rank`, `Shape`, and `Data Type`.
+
+* Rank
+A unit of dimensionality. The number of dimensions of the `Tensor`.
+
+| Rank | Math Entity | Example |
+| :--------: | :--------------- | :---------- |
+| 0 | Scalar | `s = 10` |
+| 1 | Vector | `v = [0, 2, 1]` |
+| 2 | Matrix | `m = [[0, 2, 1], [8, 4, 3], [9, 5, 7]]` |
+| 3 | 3D-Tensor | `t = [[[0, 2], [1, 8]], [[4, 3], [9, 5]], [[7, 0], [2, 1]]]` |
+| n | n-Tensor | `....` |
+
 
 
     - [Constants]()
     - [Sequences]()
     - [Randoms]()
+    
   
   - [Data Structures]()
     - [Tensor Transformations]()
