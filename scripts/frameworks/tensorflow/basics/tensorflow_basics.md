@@ -120,16 +120,21 @@ with tf.Session() as sess:
 `Tensor`: The Basic Structure of `tensorflow`.  
 It has `Rank`, `Shape`, and `Data Type`.
 
-* Rank
+#### Rank
 A unit of dimensionality. The number of dimensions of the `Tensor`.
 
-| Rank | Math Entity | Example |
-| :--------: | :--------------- | :---------- |
-| 0 | Scalar | `s = 10` |
-| 1 | Vector | `v = [0, 2, 1]` |
-| 2 | Matrix | `m = [[0, 2, 1], [8, 4, 3], [9, 5, 7]]` |
-| 3 | 3D-Tensor | `t = [[[0, 2], [1, 8]], [[4, 3], [9, 5]], [[7, 0], [2, 1]]]` |
-| n | n-Tensor | `....` |
+| Rank | Math Entity | Example | Result |
+| :--------: | :--------------- | :---------- | :-------- |
+| 0 | Scalar | `s = 10` | `()` |
+| 1 | Vector | `v = [0, 2, 1]` | `(3,)` |
+| 2 | Matrix | `m = [[0, 2, 1], [8, 4, 3], [9, 5, 7]]` | `(3, 3)` |
+| 3 | 3D-Tensor | `t = [[[0, 2], [1, 8]], [[4, 3], [9, 5]], [[7, 0], [2, 1]]]` | `(3, 2, 2)` |
+| n | n-Tensor | `....` | `n = [[[[0, 2], [1, 8]], [[4, 3], [9, 5]], [[7, 0], [2, 1]]],
+                            <br/>[[[8, 4], [3, 9]], [[5, 7], [0, 2]], [[1, 8], [4, 3]]]]` |
+
+
+#### Shape
+
 
 
 
