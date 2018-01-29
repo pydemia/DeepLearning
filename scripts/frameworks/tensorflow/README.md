@@ -2,7 +2,11 @@
 
 ## Basics on Tensorflow
 
-* [How to run]()
+* [The Bottom-Line of `tensorflow`]()
+  - [Tensor]()
+  - [Scope]()
+  - [Session]()
+    - [`tf.Session.run()` vs `Tensor.eval()`]()
 
 * [Basic Objects]()
   - [Data Types]()
