@@ -105,7 +105,7 @@ A unit of dimensionality. The number of dimensions of the `Tensor`.
 | 1 | Vector | v = [0, 2, 1] | `(3,)` |
 | 2 | Matrix | m = [[0, 2, 1], [8, 4, 3], [9, 5, 7]]` | `(3, 3) |
 | 3 | 3D-Tensor | t = [[[0, 2], [1, 8]], [[4, 3], [9, 5]], [[7, 0], [2, 1]]] | `(3, 2, 2)` |
-| n | n-Tensor | n = [[[[0, 2], [1, 8]], [[4, 3], [9, 5]], [[7, 0], [2, 1]]],<br/>     [[[8, 4], [3, 9]], [[5, 7], [0, 2]], [[1, 8], [4, 3]]]] | '(2, 3, 2, 2)` |
+| n | n-Tensor | n = [[[[0, 2], [1, 8]], [[4, 3], [9, 5]], [[7, 0], [2, 1]]],<br/>     [[[8, 4], [3, 9]], [[5, 7], [0, 2]], [[1, 8], [4, 3]]]] | `(2, 3, 2, 2)` |
 
 
 - `tf.constant` : It has only the constant values.
@@ -125,6 +125,8 @@ a = tf.Variable(.3, name='sample_variable')
 a = tf.placeholder(tf.float32, shape=[None, 3],
                    name='test_placeholder)
 ```
+
+
   - [Scope]()
   
   - [Session]()
