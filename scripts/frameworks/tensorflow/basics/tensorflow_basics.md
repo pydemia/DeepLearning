@@ -8,13 +8,13 @@ import tensorflow as tf
 
 ## The Bottom-line of `tensorflow`
 
-Tensorflow : `Tensor` + `Flow`.  
-It shows the key factor of `Tensorflow`.  
-This Framework have 2 steps:
-* Construct a Calculation Graph with `Tensor`s  
-* Run the session flowing the Data through the `Tensor` Structure.
+> Tensorflow : `Tensor` + `Flow`.  
+> It shows the key factor of `Tensorflow`.  
+> This Framework have 2 steps:
+> * Construct a Calculation Graph with `Tensor`s  
+> * Run the session flowing the Data through the `Tensor` Structure.
 
-
+---
 ##### `Tensor` : The __Containers__ for Data.
 
 ```py
