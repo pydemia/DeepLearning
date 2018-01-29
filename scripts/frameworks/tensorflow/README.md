@@ -2,6 +2,8 @@
 
 ## Basics on Tensorflow
 
+* [How to run]()
+
 * [Basic Objects]()
   - [Data Types]()
     - [Constants]()
