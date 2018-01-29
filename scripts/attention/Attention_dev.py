@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 import numpy as np
 import warnings
+from pprint import pprint
 
 from keras import backend as K
 from keras import activations
@@ -25,77 +26,255 @@ from keras.layers import (RNN,
                           Layer, Input,
                           Wrapper)
 
-from keras.layers.recurrent import *
 from keras import Model
+from keras.callbacks import Callback, LambdaCallback
+
 #from keras.layers.recurrent import (_generate_dropout_ones,
 #                                    _generate_dropout_mask)
 
-# %% ATTRNNCell ---------------------------------------------------------------
 
-class ATTRNNCell(Layer):
+# %% CallBack -----------------------------------------------------------------
 
-    def __init__(self, units, attn_size, attn_length,
-                 activation='tanh',
-                 **kwargs):
-        super(ATTRNNCell, self).__init__(**kwargs)
-        self.units = units
-        self._attn_size = attn_size
-        self._attn_length = attn_length
-        self._state_size = self.units
-        #self.state_size = (self.units,
-        #                   self._attn_size,
-        #                   self._attn_size * self._attn_length)
-        self.activation = activations.get(activation)
+class LossHistory(Callback):
+    def on_train_begin(self, logs={}):
+        self.losses = []
+        self.weights = []
+        self.states = []
+
+    def on_batch_begin(self, batch, logs={}):
+        self.weights.append([{'begin_' + layer.name: layer.get_weights()}
+                             for layer in model.layers])
+
+    def on_batch_end(self, batch, logs={}):
+        self.losses.append(logs.get('loss'))
+        self.weights.append([{'end_' + layer.name: layer.get_weights()}
+                             for layer in model.layers])
+
+
+history = LossHistory()
+
+print_weights = LambdaCallback(on_epoch_end=lambda batch,
+                               logs: pprint(model.layers[0].get_weights()))
+
+# %% Skeleton -----------------------------------------------------------------
+
+class SkeletonCell(Layer):
+
+    def __init__(self, **kwargs):
+        super(SkeletonCell, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        pass
+
+    def call(self, inputs, states, training=None):
+        pass
+
+
+class Skeleton(RNN):
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def call(self, inputs, initial_state=None,
+             mask=None,
+             training=None,
+             constants=None):
+        pass
+
+
+class CellWrapper(Layer):
+
+    """
+    A Cell Wrapper for Attention Mechanism.
+    """
+
+    def __init__(self, cell, *args, **kwargs):
+        super(CellWrapper, self).__init__(*args, **kwargs)
+        self._cell = cell
+        self._cell.__init__(self.units, **kwargs)
+
+        self.trainable = self._cell.trainable
+
+    @property
+    def units(self):
+        return self._cell.units
+
+    @property
+    def activation(self):
+        return self._cell.activation
+
+    @property
+    def use_bias(self):
+        return self._cell.use_bias
+
+    @property
+    def kernel_initializer(self):
+        return self._cell.kernel_initializer
+
+    @property
+    def recurrent_initializer(self):
+        return self._cell.recurrent_initializer
+
+    @property
+    def bias_initializer(self):
+        return self._cell.bias_initializer
+
+    @property
+    def kernel_regularizer(self):
+        return self._cell.kernel_regularizer
+
+    @property
+    def recurrent_regularizer(self):
+        return self._cell.recurrent_regularizer
+
+    @property
+    def bias_regularizer(self):
+        return self._cell.bias_regularizer
+
+    @property
+    def kernel_constraint(self):
+        return self._cell.kernel_constraint
+
+    @property
+    def recurrent_constraint(self):
+        return self._cell.recurrent_constraint
+
+    @property
+    def bias_constraint(self):
+        return self._cell.bias_constraint
+
+    @property
+    def dropout(self):
+        return self._cell.dropout
+
+    @property
+    def recurrent_dropout(self):
+        return self._cell.recurrent_dropout
 
     @property
     def state_size(self):
-        #state_size = self.units
+        return self._cell.state_size
 
-        state_size_a = []
-        for state_size in (self.units, self.units):
-            state_size_a.append(state_size)
+    @property
+    def output_size(self):
+        return self._cell.output_size
 
-        return state_size_a
+    @property
+    def implementation(self):
+        return self.cell.implementation
 
-    #@state_size.setter
-    #def state_size(self, state_size):
-    #    self.state_size = state_size
+#    @property
+#    def weights(self):
+#        return self._cell.weights + super(CellWrapper, self).weights
+
+#    @property
+#    def get_weights(self):
+#        #return self._cell.weights + self.weights
+#        #return self.weights
+#
+#        params = self.weights
+#        return K.batch_get_value(params)
 
     def build(self, input_shape):
+
+        self._cell.build(input_shape)
+        if self._cell.trainable:
+            self._trainable_weights.extend(self._cell.weights)
+        else:
+            self._non_trainable_weights.extend(self._cell.weights)
+
         input_dim = input_shape[-1]
-        self.kernel = self.add_weight(shape=(input_dim, self.units),
-                                      initializer='uniform',
-                                      name='kernel')
-        self.recurrent_kernel = self.add_weight(
-            shape=(self.units, self.units),
-            initializer='uniform',
-            name='recurrent_kernel')
+        self.kk = self.add_weight(shape=(input_dim, self.units,),
+                                  name='wrapper_kernel',
+                                  initializer=self.kernel_initializer,
+                                  regularizer=self.kernel_regularizer,
+                                  constraint=self.kernel_constraint)
+
+        self.bb = self.add_weight(shape=(self.units,),
+                                  name='wrapper_bias',
+                                  initializer=self.kernel_initializer,
+                                  regularizer=self.kernel_regularizer,
+                                  constraint=self.kernel_constraint)
+        """
+        self.kernel
+        self.recurrent_kernel
+
+        """
         self.built = True
 
-        self.attn_kernel = self.add_weight(shape=(input_dim, self.units),
-                                           initializer='uniform',
-                                           name='attn_kernel')
+    def call(self, inputs, states, training=None, constants=None):
+        new_inputs, new_states = self._cell.call(inputs, states,
+                                                 training=training,
+                                                 constants=constants)
 
-    def call(self, inputs, states):
-        prev_output = states[0]
-        attn_state = states[1:]
-        h = K.dot(inputs, self.kernel)
-        output = h + K.dot(prev_output, self.recurrent_kernel)
-        output = self.activation(output)
-        return output, [output] + list(attn_state)
+        new_inputs = K.dot(self.kk, new_inputs)
+        new_inputs = K.bias_add(new_inputs, self.bb)
+        return new_inputs, new_states
 
 
-aa = Input(shape=(3, 1), dtype='float32')
-bb = ATTRNNCell(2, 3, 3)
-cc = RNN(bb, return_sequences=True, return_state=True)(aa)
-#cc = LSTM(2, return_sequences=True, return_state=True)(aa)
-dd = Model(inputs=aa, outputs=cc)
-dd.summary()
+# %% Run ----------------------------------------------------------------------
+
+aa = Input(shape=(3, 2), dtype='float32')
+bb = SimpleRNNCell(2)
+cc = CellWrapper(bb)
+dd = RNN(cc, return_sequences=True, return_state=False)(aa)
+ee = Model(inputs=aa, outputs=dd)
+ee.summary()
 
 
-# %% ATTRNN Layer -------------------------------------------------------------
+bb.weights
+bb.get_weights()
 
-class ATTRNN(RNN):
+cc.weights
+cc.get_weights()
+
+cc.trainable
+cc.trainable_weights
+cc.count_params()
+
+ee.get_weights()
+# %% Learning -----------------------------------------------------------------
+
+import numpy as np
+
+train_X = np.random.sample(300).reshape(-1, 3, 2)
+train_X
+
+train_Y = np.random.sample(300).reshape(-1, 3, 2)
+train_Y
+
+
+EPOCH_NUM = 10
+BATCH_SIZE = 3
+print('EPOCH_NUM: %s, BATCH_SIZE %s' % (EPOCH_NUM, BATCH_SIZE))
+
+model = ee
+model.compile(optimizer='adam', loss='mae', metrics=['mae'])
+fitted = model.fit(train_X, train_Y,
+                   epochs=10,     # How many times to run back_propagation
+                   batch_size=2,  # How many data to deal with at one epoch
+                   validation_split=0.2,
+                   verbose=2,       # 1: progress bar, 2: one line per epoch
+                   #validation_data=(testX, testY),  # Validation set
+                   shuffle=True,
+                   callbacks=[history],
+                  )
+
+# Save model
+model.save('cell_wrapper_model.h5')
+
+
+fitted.history
+
+history.weights[:4]
+
+ee.get_weights()
+
+
+# %% RNN Wrapper --------------------------------------------------------------
+
+class RNNWrapper(Layer):
+
 
     def __init__(self, cell,
                  return_sequences=False,
@@ -104,20 +283,74 @@ class ATTRNN(RNN):
                  stateful=False,
                  unroll=False,
                  **kwargs):
-        super(ATTRNN, self).__init__(cell, **kwargs)
-        #self.cell = cell
-        #self.return_sequences = return_sequences
-        #self.return_state = return_state
-        #self.go_backwards = go_backwards
-        #self.stateful = stateful
-        #self.unroll = unroll
+        if isinstance(cell, (list, tuple)):
+            cell = StackedRNNCells(cell)
+        if not hasattr(cell, 'call'):
+            raise ValueError('`cell` should have a `call` method. '
+                             'The RNN was passed:', cell)
+        if not hasattr(cell, 'state_size'):
+            raise ValueError('The RNN cell should have '
+                             'an attribute `state_size` '
+                             '(tuple of integers, '
+                             'one integer per RNN state).')
+        super(RNNWrapper, self).__init__(**kwargs)
+        self.cell = cell
+        self.return_sequences = return_sequences
+        self.return_state = return_state
+        self.go_backwards = go_backwards
+        self.stateful = stateful
+        self.unroll = unroll
 
-        #self.supports_masking = True
-        #self.input_spec = [InputSpec(ndim=3)]
-        #self.state_spec = None
-        #self._states = None
-        #self.constants_spec = None
-        #self._num_constants = None
+        self.supports_masking = True
+        self.input_spec = [InputSpec(ndim=3)]
+        self.state_spec = None
+        self._states = None
+        self.constants_spec = None
+        self._num_constants = None
+
+    @property
+    def states(self):
+        if self._states is None:
+            if isinstance(self.cell.state_size, int):
+                num_states = 1
+            else:
+                num_states = len(self.cell.state_size)
+            return [None for _ in range(num_states)]
+        return self._states
+
+    @states.setter
+    def states(self, states):
+        self._states = states
+
+    def compute_output_shape(self, input_shape):
+        if isinstance(input_shape, list):
+            input_shape = input_shape[0]
+
+        if hasattr(self.cell.state_size, '__len__'):
+            output_dim = self.cell.state_size[0]
+        else:
+            output_dim = self.cell.state_size
+
+        if self.return_sequences:
+            output_shape = (input_shape[0], input_shape[1], output_dim)
+        else:
+            output_shape = (input_shape[0], output_dim)
+
+        if self.return_state:
+            state_shape = [(input_shape[0], output_dim) for _ in self.states]
+            return [output_shape] + state_shape
+        else:
+            return output_shape
+
+    def compute_mask(self, inputs, mask):
+        if isinstance(mask, list):
+            mask = mask[0]
+        output_mask = mask if self.return_sequences else None
+        if self.return_state:
+            state_mask = [None for _ in self.states]
+            return [output_mask] + state_mask
+        else:
+            return output_mask
 
     def build(self, input_shape):
         # Note input_shape will be list of shapes of initial states and
@@ -163,14 +396,22 @@ class ATTRNN(RNN):
             self.reset_states()
 
     def get_initial_state(self, inputs):
-        return super(ATTRNN, self).get_initial_state(inputs)
+        # build an all-zero tensor of shape (samples, output_dim)
+        initial_state = K.zeros_like(inputs)  # (samples, timesteps, input_dim)
+        initial_state = K.sum(initial_state, axis=(1, 2))  # (samples,)
+        initial_state = K.expand_dims(initial_state)  # (samples, 1)
+        if hasattr(self.cell.state_size, '__len__'):
+            return [K.tile(initial_state, [1, dim])
+                    for dim in self.cell.state_size]
+        else:
+            return [K.tile(initial_state, [1, self.cell.state_size])]
 
     def __call__(self, inputs, initial_state=None, constants=None, **kwargs):
         inputs, initial_state, constants = self._standardize_args(
             inputs, initial_state, constants)
 
         if initial_state is None and constants is None:
-            return super(RNN, self).__call__(inputs, **kwargs)
+            return super(RNNWrapper, self).__call__(inputs, **kwargs)
 
         # If any of `initial_state` or `constants` are specified and are Keras
         # tensors, then add them to the inputs and temporarily modify the
@@ -206,11 +447,14 @@ class ATTRNN(RNN):
             # Perform the call with temporarily replaced input_spec
             original_input_spec = self.input_spec
             self.input_spec = full_input_spec
-            output = super(RNN, self).__call__(full_input, **kwargs)
+            output = super(RNNWrapper, self).__call__(full_input, **kwargs)
             self.input_spec = original_input_spec
             return output
         else:
-            return super(RNN, self).__call__(inputs, **kwargs)
+            return super(RNNWrapper, self).__call__(inputs, **kwargs)
+
+    def get_attention(self, inputs):
+        return inputs
 
     def call(self,
              inputs,
@@ -218,6 +462,7 @@ class ATTRNN(RNN):
              training=None,
              initial_state=None,
              constants=None):
+
         # input shape: `(samples, time (padded with zeros), input_dim)`
         # note that the .build() method of subclasses MUST define
         # self.input_spec and self.state_spec with complete input shapes.
@@ -270,7 +515,9 @@ class ATTRNN(RNN):
             def step(inputs, states):
                 return self.cell.call(inputs, states, **kwargs)
 
-        last_output, outputs, states = fullrnn(step,
+        #constants = K.stack(inputs)
+        constants = [inputs]
+        last_output, outputs, states = K.rnn(step,
                                              inputs,
                                              initial_state,
                                              constants=constants,
@@ -302,11 +549,148 @@ class ATTRNN(RNN):
         else:
             return output
 
-# %% RUN ----------------------------------------------------------------------
+    def _standardize_args(self, inputs, initial_state, constants):
+        """Brings the arguments of `__call__` that can contain input tensors to
+        standard format.
 
-aa = Input(shape=(3, 1), dtype='float32')
-bb = ATTRNNCell(2, 3, 3)
-cc = ATTRNN(bb, return_sequences=True, return_state=True)(aa)
-#cc = LSTM(2, return_sequences=True, return_state=True)(aa)
-dd = Model(inputs=aa, outputs=cc)
-dd.summary()
+        When running a model loaded from file, the input tensors
+        `initial_state` and `constants` can be passed to `RNN.__call__` as part
+        of `inputs` instead of by the dedicated keyword arguments. This method
+        makes sure the arguments are separated and that `initial_state` and
+        `constants` are lists of tensors (or None).
+
+        # Arguments
+            inputs: tensor or list/tuple of tensors
+            initial_state: tensor or list of tensors or None
+            constants: tensor or list of tensors or None
+
+        # Returns
+            inputs: tensor
+            initial_state: list of tensors or None
+            constants: list of tensors or None
+        """
+        if isinstance(inputs, list):
+            assert initial_state is None and constants is None
+            if self._num_constants is not None:
+                constants = inputs[-self._num_constants:]
+                inputs = inputs[:-self._num_constants]
+            if len(inputs) > 1:
+                initial_state = inputs[1:]
+            inputs = inputs[0]
+
+        def to_list_or_none(x):
+            if x is None or isinstance(x, list):
+                return x
+            if isinstance(x, tuple):
+                return list(x)
+            return [x]
+
+        initial_state = to_list_or_none(initial_state)
+        constants = to_list_or_none(constants)
+
+        return inputs, initial_state, constants
+
+    def reset_states(self, states=None):
+        if not self.stateful:
+            raise AttributeError('Layer must be stateful.')
+        batch_size = self.input_spec[0].shape[0]
+        if not batch_size:
+            raise ValueError('If a RNN is stateful, it needs to know '
+                             'its batch size. Specify the batch size '
+                             'of your input tensors: \n'
+                             '- If using a Sequential model, '
+                             'specify the batch size by passing '
+                             'a `batch_input_shape` '
+                             'argument to your first layer.\n'
+                             '- If using the functional API, specify '
+                             'the time dimension by passing a '
+                             '`batch_shape` argument to your Input layer.')
+        # initialize state if None
+        if self.states[0] is None:
+            if hasattr(self.cell.state_size, '__len__'):
+                self.states = [K.zeros((batch_size, dim))
+                               for dim in self.cell.state_size]
+            else:
+                self.states = [K.zeros((batch_size, self.cell.state_size))]
+        elif states is None:
+            if hasattr(self.cell.state_size, '__len__'):
+                for state, dim in zip(self.states, self.cell.state_size):
+                    K.set_value(state, np.zeros((batch_size, dim)))
+            else:
+                K.set_value(self.states[0],
+                            np.zeros((batch_size, self.cell.state_size)))
+        else:
+            if not isinstance(states, (list, tuple)):
+                states = [states]
+            if len(states) != len(self.states):
+                raise ValueError('Layer ' + self.name + ' expects ' +
+                                 str(len(self.states)) + ' states, '
+                                 'but it received ' + str(len(states)) +
+                                 ' state values. Input received: ' +
+                                 str(states))
+            for index, (value, state) in enumerate(zip(states, self.states)):
+                if hasattr(self.cell.state_size, '__len__'):
+                    dim = self.cell.state_size[index]
+                else:
+                    dim = self.cell.state_size
+                if value.shape != (batch_size, dim):
+                    raise ValueError('State ' + str(index) +
+                                     ' is incompatible with layer ' +
+                                     self.name + ': expected shape=' +
+                                     str((batch_size, dim)) +
+                                     ', found shape=' + str(value.shape))
+                # TODO: consider batch calls to `set_value`.
+                K.set_value(state, value)
+
+    def get_config(self):
+        config = {'return_sequences': self.return_sequences,
+                  'return_state': self.return_state,
+                  'go_backwards': self.go_backwards,
+                  'stateful': self.stateful,
+                  'unroll': self.unroll}
+        if self._num_constants is not None:
+            config['num_constants'] = self._num_constants
+
+        cell_config = self.cell.get_config()
+        config['cell'] = {'class_name': self.cell.__class__.__name__,
+                          'config': cell_config}
+        base_config = super(RNNWrapper, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+    @classmethod
+    def from_config(cls, config, custom_objects=None):
+        from . import deserialize as deserialize_layer
+        cell = deserialize_layer(config.pop('cell'),
+                                 custom_objects=custom_objects)
+        num_constants = config.pop('num_constants', None)
+        layer = cls(cell, **config)
+        layer._num_constants = num_constants
+        return layer
+
+    @property
+    def trainable_weights(self):
+        if not self.trainable:
+            return []
+        if isinstance(self.cell, Layer):
+            return self.cell.trainable_weights
+        return []
+
+    @property
+    def non_trainable_weights(self):
+        if isinstance(self.cell, Layer):
+            if not self.trainable:
+                return self.cell.weights
+            return self.cell.non_trainable_weights
+        return []
+
+    @property
+    def losses(self):
+        if isinstance(self.cell, Layer):
+            return self.cell.losses
+        return []
+
+    def get_losses_for(self, inputs=None):
+        if isinstance(self.cell, Layer):
+            cell_losses = self.cell.get_losses_for(inputs)
+            return cell_losses + super(RNNWrapper, self).get_losses_for(inputs)
+        return super(RNNWrapper, self).get_losses_for(inputs)
