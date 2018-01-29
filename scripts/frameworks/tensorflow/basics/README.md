@@ -1,4 +1,4 @@
-# How to run Tensorflow
+# Basics on Tensorflow
 
 ## Import `tensorflow`
 
@@ -6,4 +6,134 @@
 import tensorflow as tf
 ```
 
+## The Bottom-line of `tensorflow`
+
+Tensorflow : `Tensor` + `Flow`.  
+It mean
+
+
+* `Tensor` : The __Containers__ for Data.
+
+```py
+a = tf.constant(3.0, dtype=tf.float32)
+b = tf.constant(4.0) # also tf.float32 implicitly
+total = a + b
+print(a)
+print(b)
+print(total)
+```
+
+Result:
+```sh
+Tensor("Const:0", shape=(), dtype=float32)
+Tensor("Const_1:0", shape=(), dtype=float32)
+Tensor("add:0", shape=(), dtype=float32)
+```
+
+
+* `Scope` : The __Local Namespaces__ for Each `Tensor Variables`.
+
+Global Variable Scope:
+```py
+init = tf.global_variables_initializer()
+```
+
+Local Variable Scope:
+```py
+with tf.variable_scope('foo`, reuse=True):
+    v = tf.get_variable("v", [1])
+```
+
+* `Session`: Running the processor to __Flow__ the Data to the `Tensor Graph`, which is built by `Tensors` and `Scopes`.
+  - `tf.Session()`
+
+```py
+sess = tf.Session()
+print(sess.run(*args))
+sess.close()
+```
+
+```py
+with tf.Session() as sess:
+  print(sess.run(*args))
+```
+
+  - `tf.device()`
+
+
+  - `tf.Graph()`
+
+
 ## Variables
+
+
+* [The Bottom-Line of `tensorflow`]()
+  - [Tensor]()
+    - `tf.Variable`
+    ```py
+    a = tf.Variable(.3, name='sample_variable')
+    ```
+    
+    - `tf.constant`
+    ```py
+    a = tf.constant([.3, .1, .2, .5, .1, .8], shape=[2, 3],
+                    name='sample_constant', dtype=np.float32)
+    ```
+    
+    - `tf.placeholder`
+    ```py
+    a = tf.placeholder(tf.float32, shape=[None, 3],
+                       name='test_placeholder)
+    ```
+  - [Scope]()
+  
+  - [Session]()
+    - [`tf.Session.run()` vs `Tensor.eval()`]()
+
+* [Basic Objects]()
+  - [Data Types]()
+    - [Constants]()
+    - [Sequences]()
+    - [Randoms]()
+  
+  - [Data Structures]()
+    - [Tensor Transformations]()
+      - [Casting]()
+      - [Shaping]()
+      - [Slicing & Joining]()
+      - [Casting]()
+
+* [Control Flow]()
+  - [Operators]()
+    - [Logical Operators]()
+    - [Comparison Operators]()
+    - [Debugging]()
+
+* [Operations(Math)]()
+  - [Arithmetics]()
+  - [Basic Functions]()
+  - [Matrix Functions]()
+  - [Tensor Functions]()
+  - [Complex Number Functions]()
+  - [Functions for Reduction]()
+  - [Scan(total, cumulative)]()
+  - [Segmentation]()
+  - [Sequence Comparison and Indexing]()
+
+Layers
+
+```py
+x = tf.placeholder(tf.float32, shape=[None, 3])
+linear_model = tf.layers.Dense(units=1)
+y = linear_model(x)
+```
+
+Initializing Layers
+
+Global
+
+```py
+init = tf.global_variables_initializer()
+sess.run(init)
+```
+
