@@ -14,7 +14,7 @@ import tensorflow as tf
 > * Construct a Calculation Graph with `Tensor`s  
 > * Run the session flowing the Data through the `Tensor` Structure.
 
----
+
 ##### `Tensor` : The __Containers__ for Data.
 
 ```py
