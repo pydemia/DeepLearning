@@ -113,22 +113,22 @@ A unit of dimensionality. The number of dimensions of the `Tensor`.
 #### Variety of Tensors
 
 - `tf.constant` : It has only the constant values.
-```py
-a = tf.constant([.3, .1, .2, .5, .1, .8], shape=[2, 3],
-                name='sample_constant', dtype=np.float32)
-```
+  ```py
+  a = tf.constant([.3, .1, .2, .5, .1, .8], shape=[2, 3],
+                  name='sample_constant', dtype=np.float32)
+  ```
 
 - `tf.Variable` : It has parameters(like `weights`) and can be updated. It needs to be initialized.
-```py
-a = tf.Variable(.3, name='sample_variable')
-```
+  ```py
+  a = tf.Variable(.3, name='sample_variable')
+  ```
 
 - `tf.placeholder` : It is a kind of fixed structure to flow  the data.  
                      It has only the `Shapes` and `Data Types`, not `Values` by itself.
-```py
-a = tf.placeholder(tf.float32, shape=[None, 3],
-                   name='test_placeholder)
-```
+  ```py
+  a = tf.placeholder(tf.float32, shape=[None, 3],
+                     name='test_placeholder)
+  ```
 
 ### Session
 
