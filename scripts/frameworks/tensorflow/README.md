@@ -2,7 +2,7 @@
 
 ## Basics on Tensorflow
 
-* [The Bottom-Line of `tensorflow`]()
+* [The Bottom-Line of `tensorflow`](basics/tensorflow_basics.md#the-bottom-line-of-tensorflow)
   - [Tensor]()
   - [Session]()
     - [`tf.Session.run()` vs `Tensor.eval()`]()
