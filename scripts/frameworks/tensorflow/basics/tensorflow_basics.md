@@ -95,8 +95,8 @@ with tf.variable_scope('foo`, reuse=True):
 ### Data Structures
   
 ### `Tensor`
-__The Basic Material__ of `tensorflow`, as a container. It has `Rank`, `Shape`, and `Data Type`.  
-You can build a model with it.
+__The Basic Material__ of `tensorflow`, as a container.  
+It has `Rank`, `Shape`, and `Data Type`. You can build a model with it.
 
 #### __Rank & Shape__
 A unit of dimensionality. The number of dimensions of the `Tensor`.
