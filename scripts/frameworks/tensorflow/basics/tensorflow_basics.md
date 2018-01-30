@@ -150,7 +150,7 @@ y = tf.add(a, b)
 `y` represents a tensor, not containing the values of computation. You should run a session to get the answer.
 ```py
 y
---------------
+# --------------
 <tf.Tensor 'Add_1:0' shape=(1,) dtype=float32>
 ```
 
@@ -177,7 +177,7 @@ with tf.Session() as sess:
 Finally, you got the answer! the result is `numpy.ndarray`.
 ```py
 res
-------------
+# ------------
 array([ 4.], dtype=float32)
 ```
 
