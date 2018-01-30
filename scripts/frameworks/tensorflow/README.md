@@ -1,5 +1,7 @@
 # Tensorflow
 
+![Tensorflow API Levels](tensorflow_programming_environment.png)
+
 ## Basics on Tensorflow
 
 * [The Bottom-Line of `tensorflow`](basics/tensorflow_basics.md#the-bottom-line-of-tensorflow)
