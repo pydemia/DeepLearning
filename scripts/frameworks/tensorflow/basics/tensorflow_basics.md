@@ -166,12 +166,12 @@ sess.close()
 
 You must close the session after all computation is finished. If not, the memory in your machine keep allocated, not be released. It bothers you when you try to compute another job.
 
-* Note:
-In Python, you can use `with` Statement, without concerning `sess.close()`.
-```py
-with tf.Session() as sess:
-  res = sess.run(y)
-```
+> * Note:  
+> In Python, you can use `with` Statement, without concerning `sess.close()`.
+> ```py
+> with tf.Session() as sess:
+>   res = sess.run(y)
+> ```
 
 Finally, you got the answer! the result is `numpy.ndarray`.
 ```py
