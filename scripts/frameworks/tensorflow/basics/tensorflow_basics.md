@@ -6,6 +6,7 @@
 import tensorflow as tf
 ```
 
+---
 ## The Bottom-line of `tensorflow`
 
 > Tensorflow : `Tensor` + `Flow`.  
@@ -13,62 +14,6 @@ import tensorflow as tf
 > This Framework have 2 steps:
 > * Construct a Calculation Graph with `Tensor`s  
 > * Run the session flowing the Data through the `Tensor` Structure.
-
-
-##### `Tensor` : The __Containers__ for Data.
-
-```py
-a = tf.constant(3.0, dtype=tf.float32)
-b = tf.constant(4.0) # also tf.float32 implicitly
-total = a + b
-print(a)
-print(b)
-print(total)
-```
-
-Result:
-```sh
-Tensor("Const:0", shape=(), dtype=float32)
-Tensor("Const_1:0", shape=(), dtype=float32)
-Tensor("add:0", shape=(), dtype=float32)
-```
-
-
-##### `Session`: Running the processor to __Flow__ the Data to the `Tensor Graph`, which is built by `Tensors` and `Scopes`.
-  - `tf.Session()`
-
-```py
-sess = tf.Session()
-print(sess.run(*args))
-sess.close()
-```
-
-```py
-with tf.Session() as sess:
-  print(sess.run(*args))
-```
-
-
-##### `Scope` : The __Local Namespaces__ for Each `Tensor Variables`.
-
-Global Variable Scope:
-```py
-init = tf.global_variables_initializer()
-```
-
-Local Variable Scope:
-```py
-with tf.variable_scope('foo`, reuse=True):
-    v = tf.get_variable("v", [1])
-```
-
-#### `tf.device()`
-
-
-#### `tf.Graph()`
-
----
-## Basic Objects
 
 ### Data Types
 
@@ -94,11 +39,11 @@ with tf.variable_scope('foo`, reuse=True):
   
 ### Data Structures
   
-### `Tensor`
-__The Basic Material__ of `tensorflow`, as a container.  
+#### `Tensor`
+__The Basic Material__ of `tensorflow`, as a container. All elements of tensorflow(inputs, parameters, outputs, etc.) is `Tensor`.  
 It has `Rank`, `Shape`, and `Data Type`. You can build a model with it.
 
-#### __Rank & Shape__
+##### __Rank & Shape__
 A unit of dimensionality. The number of dimensions of the `Tensor`.
 
 | Rank | Math Entity | Example | Shape |
@@ -110,17 +55,12 @@ A unit of dimensionality. The number of dimensions of the `Tensor`.
 | n | n-Tensor | n = [[[[0, 2], [1, 8]], [[4, 3], [9, 5]], [[7, 0], [2, 1]]],<br/>     [[[8, 4], [3, 9]], [[5, 7], [0, 2]], [[1, 8], [4, 3]]]] | `(2, 3, 2, 2)` |
 
 
-#### Variety of Tensors
+##### Variety of Tensors
 
 - `tf.constant` : It has only the constant values.
   ```py
   a = tf.constant([.3, .1, .2, .5, .1, .8], shape=[2, 3],
                   name='sample_constant', dtype=np.float32)
-  ```
-
-- `tf.Variable` : It has parameters(like `weights`) and can be updated while learning. It needs to be initialized.
-  ```py
-  a = tf.Variable(.3, name='sample_variable')
   ```
 
 - `tf.placeholder` : It is a kind of fixed structure to flow  the data.  
@@ -129,6 +69,12 @@ A unit of dimensionality. The number of dimensions of the `Tensor`.
   a = tf.placeholder(tf.float32, shape=[None, 3],
                      name='test_placeholder)
   ```
+
+- `tf.Variable` : It has parameters(like `weights`) and can be updated while learning. It needs to be initialized.
+  ```py
+  a = tf.Variable(.3, name='sample_variable')
+  ```
+
 
 ### Computation
 There is no point in having tensor itself. You should __connect tensors with functions to compute.__ If tensors are bricks, this functions are glues.
@@ -164,7 +110,7 @@ res = sess.run(y)
 sess.close()
 ```
 
-You must close the session after all computation is finished. If not, the memory in your machine keep allocated, not be released. It bothers you when you try to compute another job.
+You must close the session with `sess.close()` after all computation is finished. If not, the memory in your machine keep allocated, not be released. It bothers you when you try to compute another job.
 
 > * Note:  
 > In Python, you can use `with` Statement, without concerning `sess.close()`.
@@ -180,11 +126,93 @@ res
 ```
 
 
-* `tf.Session.run()` vs `Tensor.eval()`
+The full script is:
+```py
+a = tf.constant([3.], shape=(1,), name='constant_a')
+b = tf.constant([1.], shape=(1,), name='constant_b')
+y = tf.add(a, b)
+y
+# <tf.Tensor 'Add_1:0' shape=(1,) dtype=float32>
+
+with tf.Session() as sess:
+  res = sess.run(y)
+res
+# array([ 4.], dtype=float32)
+
+```
+
+> * Note: `tf.Session.run()` vs `Tensor.eval()`
+> `Tensor Objects` have a method `eval()`. This is shorthand for `tf.Session.run()` (where `tf.Session` is the current `tf.get_default_session`.
+
 
 ### Scope
+`Scope` : The __Namespaces__ for Each `Tensor Variables` to initiate.
+
+Global Variable Scope:
+```py
+init = tf.global_variables_initializer()
+```
+
+Local Variable Scope:
+```py
+with tf.variable_scope('foo`, reuse=True):
+    v = tf.get_variable("v", [1])
+```
 
 
+## 
+
+#### Using `tf.placeholder`: The way to flow the data through the tensor structure.
+
+You can create a model with `tf.placeholder` to feed the data to the pre-built tensor model.
+There is a formula for `tf.placeholder` here.
+> y = x + 2
+
+
+##### Fully fixed Shape (Fixed `n` samples)
+
+You can define tensors first. The shape is defined  `(n_samples, ...)`.
+The shape is `(1, )`, which means __only one sample can be evaluated at a time.__
+```py
+data = np.array([.4])
+
+x = tf.placeholder(tf.float32, shape=(1,), name='x')
+b = tf.constant([2.], shape=(1,), name='constant_b')
+y = tf.add(x, b)
+
+with tf.Session() as sess:
+  res = sess.run(y, feed_dict={x: data})
+res
+# array([6.], dtype=float32
+```
+
+#####  Dynamic Shape (Dynamic `n` samples)
+
+You can define tensors with `None` to accept dynamic input numbers. The shape is defined as `(None, ...)` at that case.
+```py
+data = np.array([.4, 1.5, -.3])
+
+x = tf.placeholder(tf.float32, shape=(None,), name='x')
+b = tf.constant([2.], shape=(1,), name='constant_b')
+y = tf.add(x, b)
+
+with tf.Session() as sess:
+  res = sess.run(y, feed_dict={x: data})
+res
+# array([2.4, 3.5, 1.7], dtype=float32)
+```
+
+
+
+
+
+#### `tf.device()`
+
+
+#### `tf.Graph()`
+
+
+---
 
     - [Constants]()
     - [Sequences]()
