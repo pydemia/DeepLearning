@@ -29,7 +29,7 @@
     - [Comparison Operators]()
     - [Debugging]()
 
-* [Operations(Math)]()
+* [Computation(Math)]()
   - [Arithmetics]()
   - [Basic Functions]()
   - [Matrix Functions]()
