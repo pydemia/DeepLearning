@@ -34,7 +34,6 @@ Tensor("add:0", shape=(), dtype=float32)
 ```
 
 
-
 ##### `Session`: Running the processor to __Flow__ the Data to the `Tensor Graph`, which is built by `Tensors` and `Scopes`.
   - `tf.Session()`
 
@@ -96,7 +95,8 @@ with tf.variable_scope('foo`, reuse=True):
 ### Data Structures
   
 ### `Tensor`
-The Basic Structure of `tensorflow`. It has `Rank`, `Shape`, and `Data Type`.
+__The Basic Material__ of `tensorflow`, as a container. It has `Rank`, `Shape`, and `Data Type`.  
+You can build a model with it.
 
 #### __Rank & Shape__
 A unit of dimensionality. The number of dimensions of the `Tensor`.
@@ -118,7 +118,7 @@ A unit of dimensionality. The number of dimensions of the `Tensor`.
                   name='sample_constant', dtype=np.float32)
   ```
 
-- `tf.Variable` : It has parameters(like `weights`) and can be updated. It needs to be initialized.
+- `tf.Variable` : It has parameters(like `weights`) and can be updated while learning. It needs to be initialized.
   ```py
   a = tf.Variable(.3, name='sample_variable')
   ```
@@ -130,7 +130,57 @@ A unit of dimensionality. The number of dimensions of the `Tensor`.
                      name='test_placeholder)
   ```
 
+### Computation
+There is no point in having tensor itself. You should __connect tensors with functions to compute.__ If tensors are bricks, this functions are glues.
+
+There is a formula here. Let's say all elements are scalar.
+> y = 3 + 1
+
+You can define tensors first:
+```py
+a = tf.constant([3.], shape=(1,), name='constant_a')
+b = tf.constant([1.], shape=(1,), name='constant_b')
+```
+
+Then, you can connect the tensors with `tf.add()`:
+```py
+y = tf.add(a, b)
+```
+
+`y` represents a tensor, not containing the values of computation. You should run a session to get the answer.
+```py
+y
+--------------
+<tf.Tensor 'Add_1:0' shape=(1,) dtype=float32>
+```
+
 ### Session
+
+To get the final result, You should create a session and `run()` __to flow the data through a pre-built model.__ The session will access to devices and allocate the memory to store the values and the variables.
+
+You can create a default session to local devices:
+```py
+sess = tf.Session()
+res = sess.run(y)
+sess.close()
+```
+
+You must close the session after all computation is finished. If not, the memory in your machine keep allocated, not be released. It bothers you when you try to compute another job.
+
+* Note:
+In Python, you can use `with` Statement, without concerning `sess.close()`.
+```py
+with tf.Session() as sess:
+  res = sess.run(y)
+```
+
+Finally, you got the answer! the result is `numpy.ndarray`.
+```py
+res
+------------
+array([ 4.], dtype=float32)
+```
+
 
 * `tf.Session.run()` vs `Tensor.eval()`
 
