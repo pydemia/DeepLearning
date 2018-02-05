@@ -31,7 +31,6 @@ def _generate_dropout_ones(inputs, dims):
     else:
         return K.ones((K.shape(inputs)[0], dims))
 
-
 def _generate_dropout_mask(ones, rate, training=None, count=1):
     def dropped_inputs():
         return K.dropout(ones, rate)
