@@ -48,7 +48,8 @@ class ATTRNNCell_Wrapper(Layer):
                  activation='tanh',
                  **kwargs):
         super(ATTRNNCell, self).__init__(**kwargs)
-        self.cell = cell
+        self._cell = cell
+        self._cell.__init__(units, **kwargs)
         self.units = units
         self._attn_size = attn_size
         self._attn_length = attn_length
@@ -74,6 +75,9 @@ class ATTRNNCell_Wrapper(Layer):
 
     def build(self, input_shape):
         input_dim = input_shape[-1]
+
+        self._cell.build
+
         self.kernel = self.add_weight(shape=(input_dim, self.units),
                                       initializer='uniform',
                                       name='kernel')

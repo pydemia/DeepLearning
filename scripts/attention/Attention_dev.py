@@ -273,10 +273,10 @@ ee.get_weights()
 
 # %% RNN Wrapper --------------------------------------------------------------
 
-class RNNWrapper(Layer):
+class RNNWrapper(RNN):
 
 
-    def __init__(self, cell,
+    def __init__(self, RNN,
                  return_sequences=False,
                  return_state=False,
                  go_backwards=False,
@@ -294,7 +294,7 @@ class RNNWrapper(Layer):
                              '(tuple of integers, '
                              'one integer per RNN state).')
         super(RNNWrapper, self).__init__(**kwargs)
-        self.cell = cell
+        self.cell = RNN.cell
         self.return_sequences = return_sequences
         self.return_state = return_state
         self.go_backwards = go_backwards
@@ -323,34 +323,10 @@ class RNNWrapper(Layer):
         self._states = states
 
     def compute_output_shape(self, input_shape):
-        if isinstance(input_shape, list):
-            input_shape = input_shape[0]
-
-        if hasattr(self.cell.state_size, '__len__'):
-            output_dim = self.cell.state_size[0]
-        else:
-            output_dim = self.cell.state_size
-
-        if self.return_sequences:
-            output_shape = (input_shape[0], input_shape[1], output_dim)
-        else:
-            output_shape = (input_shape[0], output_dim)
-
-        if self.return_state:
-            state_shape = [(input_shape[0], output_dim) for _ in self.states]
-            return [output_shape] + state_shape
-        else:
-            return output_shape
+        return super(RNNWrapper, self).compute_output_shape(input_shape)
 
     def compute_mask(self, inputs, mask):
-        if isinstance(mask, list):
-            mask = mask[0]
-        output_mask = mask if self.return_sequences else None
-        if self.return_state:
-            state_mask = [None for _ in self.states]
-            return [output_mask] + state_mask
-        else:
-            return output_mask
+        return super(RNNWrapper, self).compute_mask(inputs, mask)
 
     def build(self, input_shape):
         # Note input_shape will be list of shapes of initial states and
@@ -452,9 +428,6 @@ class RNNWrapper(Layer):
             return output
         else:
             return super(RNNWrapper, self).__call__(inputs, **kwargs)
-
-    def get_attention(self, inputs):
-        return inputs
 
     def call(self,
              inputs,
