@@ -10,7 +10,7 @@ from keras import regularizers
 from keras import constraints
 from keras.engine import Layer
 from keras.engine import InputSpec
-from ..engine.topology import _object_list_uid
+from keras.engine.topology import _object_list_uid
 from keras.utils.generic_utils import has_arg
 
 # Legacy support.
@@ -597,3 +597,6 @@ class GRUAttention(RNN):
             config['implementation'] = 1
         return cls(**config)
 
+
+class aa:
+    pass
