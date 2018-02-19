@@ -13,7 +13,7 @@ from keras.engine import InputSpec
 from ..engine.topology import _object_list_uid
 from keras.utils.generic_utils import has_arg
 
-# Legacy support.
+# Legacy support
 from keras.legacy.layers import Recurrent
 from keras.legacy import interfaces
 
