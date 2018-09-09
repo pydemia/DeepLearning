@@ -1,7 +1,7 @@
 # Control Flow
 
 
-## `tf.while_loop`
+## `tf.TensorArray` & `tf.while_loop`
 
 ```py
 import tensorflow as tf
