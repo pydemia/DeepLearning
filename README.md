@@ -21,7 +21,7 @@ Pure Deep Learning Algorithm in Python.
 
 
 
-## Frameworks
+## Frameworks & Snippets
 
 * ### [__Tensorflow__](scripts/frameworks/tensorflow/README.md)
 * ### [__Keras__](scripts/frameworks/keras/README.md)
