@@ -191,6 +191,5 @@ with tf.Session() as sess:
     for _ in range(5):
         res = sess.run(next_batch)
         print(list(map(lambda x: x.decode(), res)))
-    
-dataset
+
 ```
