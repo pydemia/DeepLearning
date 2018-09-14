@@ -155,3 +155,42 @@ if __name__ == '__main__':
 
 
 ```
+
+
+### `tf.data.TextLineDataset`
+
+```py
+
+file_list = glob('data/news/news_chosun*/newsdata.txt')
+dataset = tf.data.Dataset.from_tensor_slices(file_list)
+
+dataset = dataset.flat_map(
+    lambda filename: (
+        tf.data.TextLineDataset(filename)
+        .skip(0)  # The first column if necessary
+        .filter(
+            lambda line: tf.not_equal(tf.substr(line, 0, 1), "#")
+        )
+    )
+)
+
+dataset = dataset.shuffle(1)
+dataset = dataset.batch(2)
+
+data_op = dataset.make_initializable_iterator()
+data_init_op = data_op.initializer
+next_batch = data_op.get_next()
+
+var_init_op = tf.global_variables_initializer()
+
+with tf.Session() as sess:
+
+    sess.run(var_init_op)
+    sess.run(data_init_op)
+
+    for _ in range(5):
+        res = sess.run(next_batch)
+        print(list(map(lambda x: x.decode(), res)))
+    
+dataset
+```
