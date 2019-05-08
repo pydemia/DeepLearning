@@ -3,7 +3,7 @@
 Pure Deep Learning Algorithm in Python.
 
 
-## Basic on Deep Learning
+## Basics on Deep Learning
 
 * [Basics](https://github.com/pydemia/DeepLearning/blob/master/scripts/Basics.md)
   - [Perceptron](https://github.com/pydemia/DeepLearning/blob/master/scripts/Basics.md#perceptron)
