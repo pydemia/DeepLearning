@@ -56,7 +56,11 @@
   - [Data Types]()
   - [Data Structures]()
 
+## Advanced in Tensorflow
+* [`tf.data`]()
+* [`tf.distribute`]()
 
+---
 
 ### Installation from source (for diff CUDA version)
 
